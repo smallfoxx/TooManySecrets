@@ -14,7 +14,7 @@
  
     Copyright           = "© 2019 Kit Skinner. All rights reserved."
 
-    ModuleVersion       = "0.0.1"
+    ModuleVersion       = "0.0.1.1002"
 
     PowerShellVersion   = "4.0"
 

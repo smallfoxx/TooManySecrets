@@ -1,10 +1,10 @@
 Set-Variable -Name "DefaultCharSet" `
-    -Value "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123465789()" `
+    -Value "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23465789#%&'()*+,-./[\]^_{}~" `
     -Option ReadOnly `
     -Visibility Private 
 
 Function Get-TooManyPassword() {
-param([string]$Name,
+param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
     [switch]$AsPlainText)
 
     $Secret = Get-TooManySecret -Name $Name | Select-Object -First 1
@@ -21,6 +21,7 @@ Function Set-TooManyPassword() {
     param([parameter(Mandatory=$true)][string]$Name,
         [parameter(ParameterSetName="PlainText",Mandatory=$true)][string]$Value,
         [parameter(ParameterSetName="SecureString",Mandatory=$true)][SecureString]$SecretValue,
+        [PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault),
         [switch]$DisablePrevious
         )
     
@@ -37,29 +38,33 @@ Function Set-TooManyPassword() {
             Set-TooManyPassword -Name $Name -SecureString $Secure
          }
         Default { 
-            $KV = Get-PwdKeyVault
-            Set-AzKeyVaultSecret -VaultName $KV.VaultName -SecretValue $SecretValue -Name $Name -NotBefore (Get-Date)
+            Set-AzKeyVaultSecret -VaultName $KeyVault.VaultName -SecretValue $SecretValue -Name $Name -NotBefore (Get-Date)
         }
     }    
 }
 
 Function New-TooManyPassword() {
-    param([string]$Name,
+    param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
         [switch]$DisablePrevious)
 
     Set-TooManyPassword -Name $Name -SecretValue (Get-RandomPassword) -DisablePrevious:$DisablePrevious
 }
 
 Function Get-TooManySecret() {
-    param([string]$Name)
+    param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
+        [PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault)
+    )
+Begin {
+    $Secrets = $KeyVault | Get-AzKeyVaultSecret
+}
 
-    $KV = Get-PwdKeyVault
-    $Secrets = $kv | Get-AzKeyVaultSecret
-    $Secret = $Secrets | Where-Object { $_.Name -match $name } 
+Process {
     ForEach ($Secret in ($Secrets | Where-Object { $_.Name -match $name })) {
-        $DetailedSecret = $kv | Get-AzKeyVaultSecret -Name $Secret.Name
+        $DetailedSecret = $KeyVault | Get-AzKeyVaultSecret -Name $Secret.Name
         $DetailedSecret
     }
+}
+
 }
 
 Function Set-TooManySecret() {
@@ -68,7 +73,11 @@ Function Set-TooManySecret() {
 
 Function Update-TooManySecret() {
     param([parameter(ValueFromPipeline=$true,Mandatory=$true)][PSKeyVaultSecret]$Secret,
-        [PSKeyVaultIdentityItem]$KeyVault = (Get-PwdKeyVault))
+        [PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault))
+
+Process {
+    $Secret | Update-AzKeyVaultSecret
+}
 
 }
 

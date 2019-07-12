@@ -1,10 +1,10 @@
 #region Variables
 Set-Variable -Name "DefaultTooManySubID" `
-    -Value "994659af-22e1-4a1f-b459-06a16b637a68" `
+    -Value "" `
     -Option AllScope
 
 Set-Variable -Name "DefaultTooManyTenantID" `
-    -Value "ff96a852-896e-4ca3-ba21-b02cc3996b37" `
+    -Value "" `
     -Option AllScope
 
 #endregion
