@@ -16,6 +16,20 @@ Function Convert-SecretToPassword() {
     }
 }
 Function Get-TooManyPassword() {
+<#
+.SYNOPSIS
+Get a password out of an Azure Key Vault
+.DESCRIPTION
+Given the name of a secret, look for the first Secret & version in the Key Vault, and return its Value
+.PARAMETER AsPlainText
+If flagged, will return the clear text value of the Secret instead of the SecureString version
+.EXAMPLE
+PS> Get-TooManyPassword -Name "MyPWD"
+Returns the value of the Secret MyPWD in the current Key Vault as a SecureString
+.LINK
+Get-TooManySecret
+Get-AzKeyVaultSecret
+#> 
 param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
     [switch]$AsPlainText)
 
@@ -24,9 +38,39 @@ param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
 }
 
 Function Set-TooManyPassword() {
+<#
+.SYNOPSIS
+Set the password to a new value
+.DESCRIPTION
+Using either a SecureString or plain text, add a new version to a Secret in an Azure Key Vault. If a secret does
+not exist with this name, a new one is created.  A SecureString or clear String value will be returned.  The
+type returned is determined by the AsPlainText switch; if selected, a clear String is returned; otherwise, a
+SecureString object is returned
+.PARAMETER Name
+TODO:  More about parameter needed
+.PARAMETER Value
+TODO:  More about parameter needed
+.PARAMETER SecureValue
+TODO:  More about parameter needed
+.PARAMETER KeyVault
+TODO:  More about parameter needed
+.PARAMETER AsPlainText
+If flagged, will return the clear text value of the Secret instead of the SecureString version
+.PARAMETER DisablePrevic
+TODO:  More about parameter needed
+.EXAMPLE
+PS> Set-TooManyPassword -Name "MyPWD" -Value "MyNewPWD"
+Adds a new version to the MyPWD secret as MyNewPWD and returns that MyNewPWD in a SecureString object
+.OUTPUTS
+SecureString
+String
+.LINK
+Get-TooManySecret
+Get-AzKeyVaultSecret
+#> 
     param([parameter(Mandatory=$true)][string]$Name,
         [parameter(ParameterSetName="PlainText",Mandatory=$true)][string]$Value,
-        [parameter(ParameterSetName="SecureString",Mandatory=$true)][SecureString]$SecretValue,
+        [parameter(ParameterSetName="SecureString",Mandatory=$true)][SecureString]$SecureValue,
         [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault),
         [switch]$AsPlainText,
         [switch]$DisablePrevious
@@ -45,7 +89,7 @@ Function Set-TooManyPassword() {
             Set-TooManyPassword -Name $Name -SecureString $Secure
          }
         Default { 
-            Set-AzKeyVaultSecret -VaultName $KeyVault.VaultName -SecretValue $SecretValue -Name $Name -NotBefore (Get-Date) | Convert-SecretToPassword -AsPlainText:$AsPlainText
+            Set-AzKeyVaultSecret -VaultName $KeyVault.VaultName -SecretValue  $SecureValue -Name $Name -NotBefore (Get-Date) | Convert-SecretToPassword -AsPlainText:$AsPlainText
         }
     }    
 }
@@ -55,7 +99,7 @@ Function New-TooManyPassword() {
         [switch]$ReturnPlainText,
         [switch]$DisablePrevious)
 
-    Set-TooManyPassword -Name $Name -SecretValue (Get-RandomPassword) -DisablePrevious:$DisablePrevious -AsPlainText:$ReturnPlainText
+    Set-TooManyPassword -Name $Name -SecureValue (Get-RandomPassword) -DisablePrevious:$DisablePrevious -AsPlainText:$ReturnPlainText
 }
 
 Function Get-TooManySecret() {
