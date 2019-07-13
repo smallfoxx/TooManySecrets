@@ -36,7 +36,6 @@ param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
     $Secret = Get-TooManySecret -Name $Name | Select-Object -First 1
     $Secret | Convert-SecretToPassword -AsPlainText:$AsPlainText 
 }
-
 Function Set-TooManyPassword() {
 <#
 .SYNOPSIS
@@ -68,7 +67,8 @@ String
 Get-TooManySecret
 Get-AzKeyVaultSecret
 #> 
-    param([parameter(Mandatory=$true)][string]$Name,
+[CmdletBinding(DefaultParameterSetname="PlainText")]
+param([parameter(Mandatory=$true)][string]$Name,
         [parameter(ParameterSetName="PlainText",Mandatory=$true)][string]$Value,
         [parameter(ParameterSetName="SecureString",Mandatory=$true)][SecureString]$SecureValue,
         [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault),
@@ -86,7 +86,7 @@ Get-AzKeyVaultSecret
     switch ($PSCmdlet.ParameterSetName) {
         "PlainText" { 
             $Secure = ConvertTo-SecureString -String $Value -AsPlainText -Force
-            Set-TooManyPassword -Name $Name -SecureString $Secure
+            Set-TooManyPassword -Name $Name -SecureValue $Secure
          }
         Default { 
             Set-AzKeyVaultSecret -VaultName $KeyVault.VaultName -SecretValue  $SecureValue -Name $Name -NotBefore (Get-Date) | Convert-SecretToPassword -AsPlainText:$AsPlainText
