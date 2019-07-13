@@ -1,13 +1,17 @@
-#region Variables
-Set-Variable -Name "DefaultTooManySubID" `
-    -Value "" `
-    -Option AllScope
+##region Variables
+Set-Variable -Name "DefaultSMFXSubID" `
+-Value "" `
+-Option AllScope
 
-Set-Variable -Name "DefaultTooManyTenantID" `
-    -Value "" `
-    -Option AllScope
+Set-Variable -Name "DefaultSMFXTenantID" `
+-Value "" `
+-Option AllScope
 
 #endregion
+
+<# TODO:
+    * serch all keyvaults
+#>
 
 Function Test-TooManyKeyVault() {
     param([string]$Name)

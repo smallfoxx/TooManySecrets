@@ -3,11 +3,10 @@ Set-Variable -Name "DefaultCharSet" `
     -Option ReadOnly `
     -Visibility Private 
 
-Function Get-TooManyPassword() {
-param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
-    [switch]$AsPlainText)
+Function Convert-SecretToPassword() {
+    param([parameter(ValueFromPipeline=$true,Mandatory=$true)]$Secret,
+        [switch]$AsPlainText)
 
-    $Secret = Get-TooManySecret -Name $Name | Select-Object -First 1
     If ($Secret) {
         If ($AsPlainText) {
             return $Secret.SecretValueText
@@ -16,12 +15,20 @@ param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
         }
     }
 }
+Function Get-TooManyPassword() {
+param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
+    [switch]$AsPlainText)
+
+    $Secret = Get-TooManySecret -Name $Name | Select-Object -First 1
+    $Secret | Convert-SecretToPassword -AsPlainText:$AsPlainText 
+}
 
 Function Set-TooManyPassword() {
     param([parameter(Mandatory=$true)][string]$Name,
         [parameter(ParameterSetName="PlainText",Mandatory=$true)][string]$Value,
         [parameter(ParameterSetName="SecureString",Mandatory=$true)][SecureString]$SecretValue,
-        [PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault),
+        [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault),
+        [switch]$AsPlainText,
         [switch]$DisablePrevious
         )
     
@@ -38,21 +45,22 @@ Function Set-TooManyPassword() {
             Set-TooManyPassword -Name $Name -SecureString $Secure
          }
         Default { 
-            Set-AzKeyVaultSecret -VaultName $KeyVault.VaultName -SecretValue $SecretValue -Name $Name -NotBefore (Get-Date)
+            Set-AzKeyVaultSecret -VaultName $KeyVault.VaultName -SecretValue $SecretValue -Name $Name -NotBefore (Get-Date) | Convert-SecretToPassword -AsPlainText:$AsPlainText
         }
     }    
 }
 
 Function New-TooManyPassword() {
     param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
+        [switch]$ReturnPlainText,
         [switch]$DisablePrevious)
 
-    Set-TooManyPassword -Name $Name -SecretValue (Get-RandomPassword) -DisablePrevious:$DisablePrevious
+    Set-TooManyPassword -Name $Name -SecretValue (Get-RandomPassword) -DisablePrevious:$DisablePrevious -AsPlainText:$ReturnPlainText
 }
 
 Function Get-TooManySecret() {
     param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
-        [PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault)
+        [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault)
     )
 Begin {
     $Secrets = $KeyVault | Get-AzKeyVaultSecret
@@ -73,7 +81,7 @@ Function Set-TooManySecret() {
 
 Function Update-TooManySecret() {
     param([parameter(ValueFromPipeline=$true,Mandatory=$true)][PSKeyVaultSecret]$Secret,
-        [PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault))
+        [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault))
 
 Process {
     $Secret | Update-AzKeyVaultSecret
@@ -101,7 +109,7 @@ Function Get-RandomPassword() {
         [switch]$AllANSI,
         [switch]$NoConsecutive)
 
-        write-host "CHarset: $charset"
+    Write-Debug "Charset: $charset"
     If ($AllANSI) {
         $CharSet += 33..126 | ForEach-Object{ [char]$_ }
         $CharSet = $CharSet | Select-Object -Unique
