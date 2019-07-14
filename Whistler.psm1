@@ -8,9 +8,10 @@ Function Convert-SecretToPassword() {
         [securestring]$Key,
         [switch]$AsPlainText)
 
+    Write-Debug "Attempting to convert secret's value to a password"
     If ($Secret) {
         If ($Key) {
-            $SecureSecret = $Secret.SecretValueText | ConvertTo-SecureString -SecureKey $Key
+            $SecureSecret = ConvertTo-SecureString -String $Secret.SecretValueText -SecureKey $Key
         } else {
             $SecureSecret = $Secret.SecretValue
         }
@@ -36,6 +37,10 @@ Function Get-TooManyPassword() {
 Get a password out of an Azure Key Vault
 .DESCRIPTION
 Given the name of a secret, look for the first Secret & version in the Key Vault, and return its Value
+.PARAMETER Name
+Name of the secret value in tye key vault
+.PARAMETER Key
+Key used to encrypt password stored in the vault if stored cryptically
 .PARAMETER AsPlainText
 If flagged, will return the clear text value of the Secret instead of the SecureString version
 .EXAMPLE
@@ -46,10 +51,11 @@ Get-TooManySecret
 Get-AzKeyVaultSecret
 #> 
 param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
+    [securestring]$Key,
     [switch]$AsPlainText)
 
     $Secret = Get-TooManySecret -Name $Name | Select-Object -First 1
-    $Secret | Convert-SecretToPassword -AsPlainText:$AsPlainText 
+    $Secret | Convert-SecretToPassword -AsPlainText:$AsPlainText -Key $Key 
 }
 
 Function Set-TooManyPassword() {
@@ -70,10 +76,10 @@ TODO:  More about parameter needed
 .PARAMETER KeyVault
 TODO:  More about parameter needed
 .PARAMETER Key
-A 128-bit, 192-bit, or 256-bit key used to encrypted the value within the key vault
+A 128-bit, 192-bit, or 256-bit key used to encrypted the value within the key vault.  Must be in SecureString format.
 .PARAMETER AsPlainText
 If flagged, will return the clear text value of the Secret instead of the SecureString version
-.PARAMETER DisablePrevic
+.PARAMETER DisablePrevious
 TODO:  More about parameter needed
 .EXAMPLE
 PS> Set-TooManyPassword -Name "MyPWD" -Value "MyNewPWD"
@@ -105,7 +111,7 @@ param([parameter(Mandatory=$true)][string]$Name,
     switch ($PSCmdlet.ParameterSetName) {
         "PlainText" { 
             $Secure = ConvertTo-SecureString -String $Value -AsPlainText -Force
-            Set-TooManyPassword -Name $Name -SecureValue $Secure -AsPlainText:$AsPlainText -DisablePrevious:$DisablePrevious -KeyVault $KeyVault
+            Set-TooManyPassword -Name $Name -SecureValue $Secure -AsPlainText:$AsPlainText -DisablePrevious:$DisablePrevious -KeyVault $KeyVault -Key $Key
          }
         Default {
             If ($Key) {
@@ -203,11 +209,12 @@ Function Get-RandomPassword() {
 }
 
 Function Convert-TooManyKey() {
+    [CmdletBinding(DefaultParameterSetname="BySecureString")]
     Param(
         [parameter(ParameterSetName="ByBytes",Mandatory=$true)][byte[]]$ByteKey,
         [parameter(ParameterSetName="ByString",Mandatory=$true)][string]$StringKey,
         [parameter(ParameterSetName="ByInput",Mandatory=$true)][charp[]]$CharKey,
-        [parameter(ParameterSetName="ByBytes",Mandatory=$true)][securestring]$SecureKey
+        [parameter(ParameterSetName="BySecureString",Mandatory=$true)][securestring]$SecureKey
     )
     $ValidKeyLengths = @(16,24,32)
 
@@ -218,6 +225,8 @@ Function Convert-TooManyKey() {
         "ByString" {
             If ($ValidKeyLengths -contains $StringKey.Length) {
                 $SecureKey = ConvertTo-SecureString -String $StringKey -AsPlainText -Force
+            } else {
+                Write-Error ("Key length invalid. Must in one of these lengths: {0}-bits" -f (($ValidKeyLengths | ForEach-Object{ $_ * 8 }) -join "-bits, "))
             }
         }
         "ByInput" {
