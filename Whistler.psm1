@@ -5,15 +5,30 @@ Set-Variable -Name "DefaultCharSet" `
 
 Function Convert-SecretToPassword() {
     param([parameter(ValueFromPipeline=$true,Mandatory=$true)]$Secret,
+        [securestring]$Key,
         [switch]$AsPlainText)
 
     If ($Secret) {
-        If ($AsPlainText) {
-            return $Secret.SecretValueText
+        If ($Key) {
+            $SecureSecret = $Secret.SecretValueText | ConvertTo-SecureString -SecureKey $Key
         } else {
-            return $Secret.SecretValue
+            $SecureSecret = $Secret.SecretValue
+        }
+        If ($AsPlainText) {
+            return ([System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
+                [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR(
+                    $SecureSecret
+                )
+            ))
+        } else {
+            return $SecureSecret
         }
     }
+}
+
+Function Convert-TooManySecureStringToKeyedSecureString() {
+    param([SecureString]$SecureString,
+        [SecureString]$Key)
 }
 Function Get-TooManyPassword() {
 <#
@@ -36,6 +51,7 @@ param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
     $Secret = Get-TooManySecret -Name $Name | Select-Object -First 1
     $Secret | Convert-SecretToPassword -AsPlainText:$AsPlainText 
 }
+
 Function Set-TooManyPassword() {
 <#
 .SYNOPSIS
@@ -53,6 +69,8 @@ TODO:  More about parameter needed
 TODO:  More about parameter needed
 .PARAMETER KeyVault
 TODO:  More about parameter needed
+.PARAMETER Key
+A 128-bit, 192-bit, or 256-bit key used to encrypted the value within the key vault
 .PARAMETER AsPlainText
 If flagged, will return the clear text value of the Secret instead of the SecureString version
 .PARAMETER DisablePrevic
@@ -72,6 +90,7 @@ param([parameter(Mandatory=$true)][string]$Name,
         [parameter(ParameterSetName="PlainText",Mandatory=$true)][string]$Value,
         [parameter(ParameterSetName="SecureString",Mandatory=$true)][SecureString]$SecureValue,
         [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault),
+        [SecureString]$Key,
         [switch]$AsPlainText,
         [switch]$DisablePrevious
         )
@@ -86,9 +105,16 @@ param([parameter(Mandatory=$true)][string]$Name,
     switch ($PSCmdlet.ParameterSetName) {
         "PlainText" { 
             $Secure = ConvertTo-SecureString -String $Value -AsPlainText -Force
-            Set-TooManyPassword -Name $Name -SecureValue $Secure
+            Set-TooManyPassword -Name $Name -SecureValue $Secure -AsPlainText:$AsPlainText -DisablePrevious:$DisablePrevious -KeyVault $KeyVault
          }
-        Default { 
+        Default {
+            If ($Key) {
+                #If a seed key for value is supplied, convert the secure string to an encrypted value using the string
+                $Encrypted = ConvertFrom-SecureString -SecureString $SecureValue -SecureKey $key
+                #Then convert that encrypted value back to a SecureString for storage in the vault
+                $SecureEncrypted = ConvertTo-SecureString -String $Encrypted -AsPlainText -Force
+                $SecureValue = $SecureEncrypted
+            }
             Set-AzKeyVaultSecret -VaultName $KeyVault.VaultName -SecretValue  $SecureValue -Name $Name -NotBefore (Get-Date) | Convert-SecretToPassword -AsPlainText:$AsPlainText
         }
     }    
@@ -176,6 +202,32 @@ Function Get-RandomPassword() {
 
 }
 
+Function Convert-TooManyKey() {
+    Param(
+        [parameter(ParameterSetName="ByBytes",Mandatory=$true)][byte[]]$ByteKey,
+        [parameter(ParameterSetName="ByString",Mandatory=$true)][string]$StringKey,
+        [parameter(ParameterSetName="ByInput",Mandatory=$true)][charp[]]$CharKey,
+        [parameter(ParameterSetName="ByBytes",Mandatory=$true)][securestring]$SecureKey
+    )
+    $ValidKeyLengths = @(16,24,32)
+
+    Switch ($PSCmdlet.ParameterSetName) {
+        "ByBytes" {
+            Convert-TooManyKey -StringKey ([char[]]$ByteKey -join "")
+        }
+        "ByString" {
+            If ($ValidKeyLengths -contains $StringKey.Length) {
+                $SecureKey = ConvertTo-SecureString -String $StringKey -AsPlainText -Force
+            }
+        }
+        "ByInput" {
+            Convert-TooManyKey -StringKey ($CharKey -join "")
+        }
+        Default {}
+    }
+    Return $SecureKey
+}
+
 
 #region Alias Listings
 $aliases = @{ "Get-TooManyPassword"=@("Get-Password","gpwd") }
@@ -183,7 +235,8 @@ $aliases += @{ "Set-TooManyPassword"=@("Set-Password","spwd") }
 $aliases += @{ "New-TooManyPassword"=@("New-Password","newpwd") }
 $aliases += @{ "Get-TooManySecret"=@("Get-Secret") }
 $aliases += @{ "Set-TooManySecret"=@("Set-Secret") }
-$aliases += @{ "Update-TooManySecret"=@("UPdate-Secret") }
+$aliases += @{ "Update-TooManySecret"=@("Update-Secret") }
+$aliases += @{ "Convert-TooManyKey"=@("Convert-Key") }
 
 #region Publish Members
 foreach ($func in $aliases.Keys) {
