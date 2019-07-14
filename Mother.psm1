@@ -7,6 +7,10 @@ Set-Variable -Name "DefaultSMFXTenantID" `
 -Value "" `
 -Option AllScope
 
+Set-Variable -Name "TMSKeyVault" `
+    -Value $null `
+    -Option AllScope
+
 #endregion
 
 <# TODO:
@@ -64,7 +68,14 @@ param([string]$Name)
 #TODO: change code to look for global or module variable 
 #TODO: set get-azkeyvault to be more specific, at least by default
     If (Test-TooManyAzure) {
-        $KeyVault = Get-AzKeyVault | Where-Object { $_.name -match $Name } | Select-Object -First 1
+        If ($TMSKeyVault -and (($TMSKeyVault.VaultName -eq $Name) -xor (-not $Name))) {
+            Write-Debug "Using existing vault [$($TMSKeyVault.VaultName)]..."
+            $KeyVault = $TMSKeyVault
+        } else {
+            $KeyVault = Get-AzKeyVault | Where-Object { $_.VaultName -match $Name } | Select-Object -First 1
+            $TMSKeyVault = $KeyVault
+            Write-Debug "Got new vault [$($TMSKeyVault.VaultName)]..."
+        }
         return $KeyVault
     }
 

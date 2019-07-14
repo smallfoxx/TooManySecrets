@@ -27,10 +27,6 @@ Function Convert-SecretToPassword() {
     }
 }
 
-Function Convert-TooManySecureStringToKeyedSecureString() {
-    param([SecureString]$SecureString,
-        [SecureString]$Key)
-}
 Function Get-TooManyPassword() {
 <#
 .SYNOPSIS
@@ -209,12 +205,41 @@ Function Get-RandomPassword() {
 }
 
 Function Convert-TooManyKey() {
+<#
+.SYNOPSIS
+Convert a key to a secure string for encrypting values.
+.DESCRIPTION
+Changes a 128-bit, 192-bit, or 256-bit key into a secure string to be used for encrypting secret values in
+the key vault.  By default, all Secrets are stored securely with limited access in Azure. However, for those
+people that require an added level to not be easily viewed in Azure, the secret can be stored with an Encrpted
+value within the Secret in Azure
+.PARAMETER StringKey
+An string of either 16, 24, or 32 ASCII characters long
+.PARAMETER ByteKey
+An array of bytes either 16, 24, or 32 in length
+.PARAMETER CharKey
+An array of ASCII characters either 16, 24, or 32 in length
+.PARAMETER SecureKey
+A SecureString holding a string of 16, 24, or 32 ASCII characters long 
+.EXAMPLE
+PS> Convert-TooManyKey -StringKey "h|nD#iCDp8\}(Jqw"
+Converts the given string to a secure string to be used for a key
+.EXAMPLE
+PS> Convert-TooManyKey -ByteKey @(104, 124, 110, 68, 35, 105, 67, 68, 112, 56, 92, 125, 40, 74, 113, 119)
+Converts the given byte array to a secure string to be used for a key
+.OUTPUTS
+SecureString
+String
+.LINK
+Get-TooManyPassword
+Set-TooManyPassword
+#> 
     [CmdletBinding(DefaultParameterSetname="BySecureString")]
     Param(
-        [parameter(ParameterSetName="ByBytes",Mandatory=$true)][byte[]]$ByteKey,
-        [parameter(ParameterSetName="ByString",Mandatory=$true)][string]$StringKey,
-        [parameter(ParameterSetName="ByInput",Mandatory=$true)][charp[]]$CharKey,
-        [parameter(ParameterSetName="BySecureString",Mandatory=$true)][securestring]$SecureKey
+        [parameter(ParameterSetName="ByString",Mandatory=$true,Position=1)][string]$StringKey,
+        [parameter(ParameterSetName="ByBytes",Mandatory=$true,Position=1)][byte[]]$ByteKey,
+        [parameter(ParameterSetName="ByChars",Mandatory=$true,Position=1)][char[]]$CharKey,
+        [parameter(ParameterSetName="BySecureString",Mandatory=$true,Position=1)][securestring]$SecureKey
     )
     $ValidKeyLengths = @(16,24,32)
 
@@ -226,10 +251,10 @@ Function Convert-TooManyKey() {
             If ($ValidKeyLengths -contains $StringKey.Length) {
                 $SecureKey = ConvertTo-SecureString -String $StringKey -AsPlainText -Force
             } else {
-                Write-Error ("Key length invalid. Must in one of these lengths: {0}-bits" -f (($ValidKeyLengths | ForEach-Object{ $_ * 8 }) -join "-bits, "))
+                Write-Error ("Key length invalid. Must be in one of these lengths: {0}-bits" -f (($ValidKeyLengths | ForEach-Object{ $_ * 8 }) -join "-bits, "))
             }
         }
-        "ByInput" {
+        "ByChars" {
             Convert-TooManyKey -StringKey ($CharKey -join "")
         }
         Default {}
