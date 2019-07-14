@@ -8,8 +8,12 @@
     #This GUID was generated on 7/11/2019
   GUID                = '426237eb-1a68-4db9-a10c-b8206698c3d3'
   
-  Description         = "This module is useful for storing and retrieving passwords and secrets in Azure Key Vaults.  This is published under the"+ `
-                         "Apache License 2.0 and available via GitHub @ https://github.com/smallfoxx/TooManySecrets/"
+  Description         = "This module is useful for storing and retrieving passwords and secrets in Azure Key Vaults.  This allows for passwords " + `
+                         "and secrets to be shared among users via Azure AD authentication and policies with the relatively inexpensive Azure " + `
+                         "Key Vault resource. While communications are always encrypted and stored securely when working with the Azure Key " + `
+                         "Vault, further security can be utilized to independantly encrypting the passwords before they are transmitted to " + `
+                         "Azure. This is module and companion nested modules are published under the Apache License 2.0 and available via "+ `
+                         "GitHub @ https://github.com/smallfoxx/TooManySecrets/"
 
   Author              = "Kit Skinner"
 
@@ -17,7 +21,7 @@
 
   Copyright           = "© 2019 Kit Skinner. All rights reserved."
 
-  ModuleVersion       = "0.0.2.1003"
+  ModuleVersion       = "0.1.37.1003"
 
   PowerShellVersion   = "4.0"
 

@@ -54,33 +54,66 @@ Name to give this Key Vault
 }
 
 Function Get-TooManyKeyVault() {
-<#
-.SYNOPSIS
-Retrieve an Azure Key Vault
-.DESCRIPTION
-Find the first key vault in the current subscription with the give name.
-.PARAMETER Name
-Name given to the Key Vault
-.EXAMPLE
-PS> $MyVaut = Get-TooManyKeyVault -Name "MyVault"
-#>
-param([string]$Name)
-#TODO: change code to look for global or module variable 
-#TODO: set get-azkeyvault to be more specific, at least by default
-    If (Test-TooManyAzure) {
-        If ($TMSKeyVault -and (($TMSKeyVault.VaultName -eq $Name) -xor (-not $Name))) {
-            Write-Debug "Using existing vault [$($TMSKeyVault.VaultName)]..."
-            $KeyVault = $TMSKeyVault
-        } else {
-            $KeyVault = Get-AzKeyVault | Where-Object { $_.VaultName -match $Name } | Select-Object -First 1
-            $TMSKeyVault = $KeyVault
-            Write-Debug "Got new vault [$($TMSKeyVault.VaultName)]..."
+    <#
+    .SYNOPSIS
+    Retrieve an Azure Key Vault
+    .DESCRIPTION
+    Find the first key vault in the current subscription with the give name.
+    .PARAMETER Name
+    Name given to the Key Vault
+    .EXAMPLE
+    PS> $MyVaut = Get-TooManyKeyVault -Name "MyVault"
+    #>
+    param([string]$Name)
+    #TODO: change code to look for global or module variable 
+    #TODO: set get-azkeyvault to be more specific, at least by default
+        If (Test-TooManyAzure) {
+            If ($TMSKeyVault -and (($TMSKeyVault.VaultName -eq $Name) -xor (-not $Name))) {
+                Write-Debug "Using existing vault [$($TMSKeyVault.VaultName)]..."
+                $KeyVault = $TMSKeyVault
+            } else {
+                $KeyVault = Get-AzKeyVault | Where-Object { $_.VaultName -match $Name } | Select-Object -First 1
+                $TMSKeyVault = $KeyVault
+                Write-Debug "Got new vault [$($TMSKeyVault.VaultName)]..."
+            }
+            return $KeyVault
         }
-        return $KeyVault
+    
     }
+    
+Function Select-TooManyKeyVault() {
+    <#
+    .SYNOPSIS
+    Sets the default key vault to be used by the module.
+    .DESCRIPTION
+    Find the first key vault in the current subscription with the give name.
+    .PARAMETER Name
+    Name given to the Key Vault
+    .EXAMPLE
+    PS> $MyVaut = Select-TooManyKeyVault -Name "MyVault"
+    .LINK
+    Get-AzKeyVault
+    #>
+    param([parameter(ParameterSetName="ByString",Mandatory=$true,Position=1)][string]$Name,
+        [parameter(ParameterSetName="ByObject",Mandatory=$true,Position=1)][ Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault
+        )
+        If ($KeyVault) {
+            $TMSKeyVault = $KeyVault
+            return $TMSKeyVault
+        } elseif (Test-TooManyAzure) {
+            If ($TMSKeyVault -and (($TMSKeyVault.VaultName -eq $Name) -xor (-not $Name))) {
+                Write-Debug "Using existing vault [$($TMSKeyVault.VaultName)]..."
+            } else {
+                $KeyVault = Get-AzKeyVault | Where-Object { $_.VaultName -match $Name } | Select-Object -First 1
+                $TMSKeyVault = $KeyVault
+                Write-Debug "Got new vault [$($TMSKeyVault.VaultName)]..."
+            }
 
-}
-
+            Return $TMSKeyVault
+        }
+    
+    }
+        
 Function Test-TooManyAzure() {
 <#
 .SYNOPSIS
@@ -116,6 +149,7 @@ Connect-AzConnect
 $aliases = @{ "Test-TooManyKeyVault"=@() }
 $aliases += @{ "New-TooManyKeyVault"=@() }
 $aliases += @{ "Get-TooManyKeyVault"=@() }
+$aliases += @{ "Select-TooManyKeyVault"=@("Select-KeyVault") }
 
 #region Publish Members
 foreach ($func in $aliases.Keys) {
