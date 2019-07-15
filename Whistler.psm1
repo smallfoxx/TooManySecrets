@@ -132,7 +132,8 @@ Function New-TooManyPassword() {
 
 Function Get-TooManySecret() {
     param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
-        [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault)
+        [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault),
+        [switch]$IncludeVersions
     )
 Begin {
     $Secrets = $KeyVault | Get-AzKeyVaultSecret
@@ -140,7 +141,7 @@ Begin {
 
 Process {
     ForEach ($Secret in ($Secrets | Where-Object { $_.Name -match $name })) {
-        $DetailedSecret = $KeyVault | Get-AzKeyVaultSecret -Name $Secret.Name
+        $DetailedSecret = $KeyVault | Get-AzKeyVaultSecret -Name $Secret.Name -IncludeVersions:$IncludeVersions
         $DetailedSecret
     }
 }
