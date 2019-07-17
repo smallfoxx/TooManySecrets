@@ -49,7 +49,7 @@ Common commands:
 
 
 
-## Goal
+# Goals
 Initially, we're trying to make an inexpensive, shared, open-source based solution to share and retrieve password with a select group of users that allows for a few key goals:
 * Secure, encrypted storage for passwords and secrets
 * Multi-user access
