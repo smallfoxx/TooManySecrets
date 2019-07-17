@@ -36,13 +36,15 @@ Common commands:
 >  _Creates a secret or password named "MyPassword" with the text P@ssword1234_
  
  
-   `$cred = Get-Credential MyUser@domain.com
+   `$cred = Get-Credential MyUser@domain.com; 
+   
   Set-Password -Name $cred.username -SecureValue $cred.password`
   
 >  _Prompts the user for a username & password, and stores those values to the key vault with the username as the name as the secret and the password as the value_
  
  
- `$username = "MyUser@domain.com"
+ `$username = "MyUser@domain.com"; 
+ 
   $cred = New-Object PSCredential ($username, (Get-Password -Name $username))`
   
 >  _Gets a secret with the user's login name "MyUser@domain.com" & passowrd, and stores it as a PSCredential called $cred_
