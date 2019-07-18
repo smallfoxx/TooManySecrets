@@ -6,7 +6,7 @@ Someone once asked why worry about managing passwords and secrets as we move to 
 
 # Installation
 This module is also published to PowerShell Gallery and can be installed with the simple command:
-  Install-Module TooManySecrets
+  `Install-Module TooManySecrets`
 
 You can also download this module and copy the folder to either of these two locations:
 * %SystemRoot%\System32\WindowsPowerShell\v1.0\Modules\
