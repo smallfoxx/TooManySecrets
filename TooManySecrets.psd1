@@ -12,7 +12,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.1.41.2031'
+ModuleVersion = '0.2.12.2621'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -53,7 +53,10 @@ CLRVersion = '4.0'
 # Modules that must be imported into the global environment prior to importing this module
 RequiredModules = @(@{ModuleName = 'Az.Accounts'; GUID = '17a2feff-488b-47f9-8729-e2cec094624c'; ModuleVersion = '1.5.3'; }, 
                @{ModuleName = 'Az.KeyVault'; GUID = 'cd188042-f215-4657-adfe-c17ae28cf730'; ModuleVersion = '1.2.0'; }, 
-               @{ModuleName = 'Az.Storage'; GUID = 'dfa9e4ea-1407-446d-9111-79122977ab20'; ModuleVersion = '1.4.0'; })
+               @{ModuleName = 'Az.Resources'; GUID = '48bb344d-4c24-441e-8ea0-589947784700'; ModuleVersion = '1.4.0'; },
+               @{ModuleName = 'Az.Storage'; GUID = 'dfa9e4ea-1407-446d-9111-79122977ab20'; ModuleVersion = '1.4.0'; },
+               @{ModuleName = 'AzTable'; GUID = '0ed51f07-bcc5-429d-9322-0477168a0926'; ModuleVersion = '2.0.0'; }
+               )
 
 # Assemblies that must be loaded prior to importing this module
 # RequiredAssemblies = @()
@@ -69,7 +72,8 @@ RequiredModules = @(@{ModuleName = 'Az.Accounts'; GUID = '17a2feff-488b-47f9-872
 
 # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
 NestedModules = @('Whistler.psm1', 
-               'Mother.psm1')
+               'Mother.psm1',
+               'Carl.psm1')
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 <# FunctionsToExport = 'Set-TooManySecret', 'Set-TooManySecretyProperty', 
@@ -82,7 +86,7 @@ NestedModules = @('Whistler.psm1',
 #>
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
-CmdletsToExport = @()
+# CmdletsToExport = @()
 
 # Variables to export from this module
 # VariablesToExport = @()

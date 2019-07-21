@@ -11,6 +11,14 @@ Set-Variable -Name "TMSKeyVault" `
     -Value $null `
     -Option AllScope
 
+Set-Variable -Name "TMSStorage" `
+    -Value $null `
+    -Option AllScope
+
+Set-Variable -Name "TMSTable" `
+    -Value $null `
+    -Option AllScope
+
 #endregion
 
 <# TODO:
@@ -113,7 +121,53 @@ Function Select-TooManyKeyVault() {
         }
     
     }
-        
+
+Function Select-TooManyTable() {
+    <#
+    .SYNOPSIS
+    Sets the default table to be used by the module.
+    .DESCRIPTION
+    Find the first table in the current subscription with the give name.
+    .PARAMETER Name
+    Name given to the Table
+    .EXAMPLE
+    PS> $MyTable = Select-TooManyKeyVault -Name "MyVault"
+    .LINK
+    Get-AzKeyVault
+    #>
+    param([parameter(ParameterSetName="ByString",Mandatory=$true,Position=1)][string]$Name,
+        [parameter(ParameterSetName="ByObject",Mandatory=$true,Position=1)][Microsoft.Azure.Cosmos.Table.CloudTable]$Table,
+        [Microsoft.Azure.Commands.Management.Storage.Models.PSStorageAccount]$StorageAccount
+        )
+        If ($Table) {
+            $TMSTable = $Table
+            return $TMSTable
+        } elseif (Test-TooManyAzure) {
+            If ($TMSTable -and (($TMSTable.Name -eq $Name) -xor (-not $Name))) {
+                Write-Debug "Using existing table [$($TMSTable.VaultName)]..."
+            } else {
+                If ($StorageAccount) {
+                    $TMSStorage = $StorageAccount
+                } elseif ($TMSStorage) {
+
+                } else {
+                    $TMSStorage = Get-AzStorageAccount | ?{ $_.StorageAccountName -match "tmsmeta" }
+                }
+                If ($TMSStorage) {
+                    $Table = (Get-AzStorageTable -Name $Name -Context $TMSStorage.Context).CloudTable
+                    If ($Table) {
+                        $TMSTable = $Table
+                        Write-Debug "Using found table [$($TMSTable.Name)]" 
+                    }
+                }
+                Write-Debug "Got new vault [$($TMSKeyVault.VaultName)]..."
+            }
+
+            Return $TMSTable
+        }
+    
+    }
+                    
 Function Test-TooManyAzure() {
 <#
 .SYNOPSIS

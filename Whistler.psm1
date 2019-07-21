@@ -280,9 +280,9 @@ foreach ($func in $aliases.Keys) {
             # If (-not (Get-Command $alias)) { New-Alias -Name $alias -Value $func -PassThru }
             New-Alias -Name $alias -Value $func -PassThru 
         }
-        Export-ModuleMember -function $func -alias ($aliases[$func]) 
+        Export-ModuleMember -Function $func -alias ($aliases[$func]) 
     } else {
-        Export-ModuleMember -function $func
+        Export-ModuleMember -funct $func
     }
 }
 #endregion
