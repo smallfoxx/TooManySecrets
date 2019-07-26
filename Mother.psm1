@@ -2,7 +2,7 @@
 Set-Variable -Name "DefaultSMFXSubID" `
 -Value "" `
 -Option AllScope
-
+ 
 Set-Variable -Name "DefaultSMFXTenantID" `
 -Value "" `
 -Option AllScope

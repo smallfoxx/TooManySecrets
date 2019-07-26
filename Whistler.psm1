@@ -2,7 +2,7 @@ Set-Variable -Name "DefaultCharSet" `
     -Value "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23465789#%&'()*+,-./[\]^_{}~" `
     -Option ReadOnly `
     -Visibility Private 
-
+ 
 Function Convert-SecretToPassword() {
     param([parameter(ValueFromPipeline=$true,Mandatory=$true)]$Secret,
         [securestring]$Key,

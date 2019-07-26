@@ -1,6 +1,6 @@
 
 $SpecialRowProperties = @("Etag","PartitionKey","RowKey","TableTimestamp")
-
+ 
 Function Get-TooManyMeta() {
 <#
 .SYNOPSIS
