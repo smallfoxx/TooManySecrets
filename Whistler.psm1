@@ -130,20 +130,54 @@ Function New-TooManyPassword() {
     Set-TooManyPassword -Name $Name -SecureValue (Get-RandomPassword) -DisablePrevious:$DisablePrevious -AsPlainText:$ReturnPlainText
 }
 
+
 Function Get-TooManySecret() {
     param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
         [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault),
+        [string]$Version,
+        [switch]$RegEx,
+        [switch]$Like,
+        [switch]$ExcludeMetadata,
         [switch]$IncludeVersions
     )
 Begin {
-    $Secrets = $KeyVault | Get-AzKeyVaultSecret
+    If ($RegEx -or $Like) {
+        $Secrets = $KeyVault | Get-AzKeyVaultSecret
+    }
 }
 
 Process {
-    ForEach ($Secret in ($Secrets | Where-Object { $_.Name -match $name })) {
-        $DetailedSecret = $KeyVault | Get-AzKeyVaultSecret -Name $Secret.Name -IncludeVersions:$IncludeVersions
-        $DetailedSecret
+    If ($RegEx -or $Like) {
+        If ($RegEx) {
+            $FilteredSecrets = $Secrets | Where-Object { $_.Name -match $name }
+        } else {
+            $FilteredSecrets = $Secrets | Where-Object { $_.Name -like $name }
+        }
+        ForEach ($Secret in $FilteredSecrets) {
+            $DetailedSecret = $KeyVault | Get-AzKeyVaultSecret -Name $Secret.Name -IncludeVersions:$IncludeVersions
+            If ($ExcludeMetadata) {
+                $DetailedSecret
+            } elseif ($IncludeVersions) {
+                $DetailedSecret | Add-TooManyMeta -Force
+            } else  {
+                Add-TooManyMeta -Secret $DetailedSecret -Force
+            }
+        }
+    } else {
+        If ($Version -eq "") {
+            $Secret = $KeyVault | Get-AzKeyVaultSecret -Name $Name -IncludeVersions:$IncludeVersions
+        } else {
+            $Secret = $KeyVault | Get-AzKeyVaultSecret -Name $Name -Version $Version
+        }
+        If ($ExcludeMetadata) {
+            $Secret 
+        } elseif ($IncludeVersions) {
+            $Secret | Add-TooManyMeta -Force
+        } else {
+            $Secret | Add-TooManyMeta -Force
+        }
     }
+
 }
 
 }

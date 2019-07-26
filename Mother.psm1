@@ -17,7 +17,7 @@ Set-Variable -Name "TMSStorage" `
 
 Set-Variable -Name "TMSTable" `
     -Value $null `
-    -Option AllScope
+    -Scope Global -Visibility Private
 
 #endregion
 
@@ -135,7 +135,7 @@ Function Select-TooManyTable() {
     .LINK
     Get-AzKeyVault
     #>
-    param([parameter(ParameterSetName="ByString",Mandatory=$true,Position=1)][string]$Name,
+    param([parameter(ParameterSetName="ByString",Position=1)][string]$Name,
         [parameter(ParameterSetName="ByObject",Mandatory=$true,Position=1)][Microsoft.Azure.Cosmos.Table.CloudTable]$Table,
         [Microsoft.Azure.Commands.Management.Storage.Models.PSStorageAccount]$StorageAccount
         )
@@ -144,29 +144,41 @@ Function Select-TooManyTable() {
             return $TMSTable
         } elseif (Test-TooManyAzure) {
             If ($TMSTable -and (($TMSTable.Name -eq $Name) -xor (-not $Name))) {
-                Write-Debug "Using existing table [$($TMSTable.VaultName)]..."
+                Write-Debug "Using existing table [$($TMSTable.Name)]..."
             } else {
                 If ($StorageAccount) {
                     $TMSStorage = $StorageAccount
                 } elseif ($TMSStorage) {
 
                 } else {
-                    $TMSStorage = Get-AzStorageAccount | ?{ $_.StorageAccountName -match "tmsmeta" }
+                    $TMSStorage = Get-AzStorageAccount | Where-Object{ $_.StorageAccountName -match "tmsmeta" }
                 }
                 If ($TMSStorage) {
                     $Table = (Get-AzStorageTable -Name $Name -Context $TMSStorage.Context).CloudTable
                     If ($Table) {
-                        $TMSTable = $Table
+                        Set-Variable -Name "TMSTable" -Value $Table -Scope Global -Visibility Private
                         Write-Debug "Using found table [$($TMSTable.Name)]" 
                     }
                 }
-                Write-Debug "Got new vault [$($TMSKeyVault.VaultName)]..."
+                Write-Debug "Got new table [$($TMSTable.Name)]..."
             }
 
             Return $TMSTable
         }
     
     }
+
+Function Test-TooManyTable() {
+    param()
+
+    If ($TMSTable) {
+        $true
+    } elseif (Select-TooManyTable) {
+        $true
+    } else {
+        $false
+    }
+}
                     
 Function Test-TooManyAzure() {
 <#
@@ -204,6 +216,8 @@ $aliases = @{ "Test-TooManyKeyVault"=@() }
 $aliases += @{ "New-TooManyKeyVault"=@() }
 $aliases += @{ "Get-TooManyKeyVault"=@() }
 $aliases += @{ "Select-TooManyKeyVault"=@("Select-KeyVault") }
+$aliases += @{ "Select-TooManyTable"=@() }
+$aliases += @{ "Test-TooManyTable"=@() }
 
 #region Publish Members
 foreach ($func in $aliases.Keys) {

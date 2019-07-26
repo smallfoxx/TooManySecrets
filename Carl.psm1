@@ -19,11 +19,14 @@ Get-AzKeyVault
 #>
     param([string]$Name)
 
-    $row = Get-AzTableRow -Table $TMSTable -PartitionKey "Secrets" -RowKey $Name
-    If ($Row) {
-        return ($row | Select-Object -ExcludeProperty $SpecialRowProperties)
-    } else {
-        return $null
+    If (Test-TooManyTable) {
+        Write-Debug "Using table [$($TMSTable.Name)]..."
+        $row = Get-AzTableRow -Table $TMSTable -PartitionKey "Secrets" -RowKey $Name
+        If ($Row) {
+            return ($row | Select-Object -ExcludeProperty $SpecialRowProperties)
+        } else {
+            return $null
+        }
     }
 }
 
@@ -42,6 +45,7 @@ Function Set-TooManyMeta() {
     Get-TooManyKeyVault
     Get-TooManySecret
     Get-AzKeyVault
+    AzTable
     #>
         param([string]$Name,
             [hashtable]$Property)
@@ -54,10 +58,41 @@ Function Set-TooManyMeta() {
         }
     }
 
+function Add-TooManyMeta () {
+    param(
+        [parameter(ParameterSetName="ByIdentityItem",ValueFromPipeline=$true,Mandatory=$true,Position=1)][Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecretIdentityItem]$InputObject,
+        [switch]$Force
+        )
+
+Begin {}
+Process {
+    switch ($InputObject.GetType().Name) {
+        "PSKeyVaultSecret" {
+            Write-Debug "By secret: $($InputObject.GetType())"
+            $Metadata = Get-TooManyMeta -Name $InputObject.Name
+            If ($Metadata) {
+                $Properties = $Metadata | Get-Member -MemberType *Propert* | Where-Object { $SpecialRowProperties -notcontains $_.name }
+                ForEach ($Property in $Properties) {
+                    $InputObject | Add-Member -MemberType $Property.MemberType -Name $Property.Name -Value ($Metadata.($Property.Name)) -Force:$Force
+                }
+            }
+            $InputObject
+        }
+        Default {
+            If ($InputObject) {
+                Write-Debug "By ident: $($InputObject.GetType())"
+                $Secret = Get-TooManySecret -Name $InputObject.Name -Version $InputObject.Version -ExcludeMetadata
+                $Secret | Add-TooManyMeta -Force:$Force
+            }
+        }
+    }
+}
+}
 
 #region Alias Listings
 $aliases = @{ "Get-TooManyMeta"=@() }
 $aliases += @{ "Set-TooManyMeta"=@() }
+$aliases += @{ "Add-TooManyMeta"=@() }
 #$aliases += @{ "Tes-TooManyKeyVault"=@() }
 #$aliases += @{ "Select-TooManyKeyVault"=@("Select-KeyVault") }
 
