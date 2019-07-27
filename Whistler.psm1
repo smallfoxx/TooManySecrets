@@ -160,7 +160,8 @@ Process {
             } elseif ($IncludeVersions) {
                 $DetailedSecret | Add-TooManyMeta -Force
             } else  {
-                Add-TooManyMeta -Secret $DetailedSecret -Force
+                #Add-TooManyMeta -Secret $DetailedSecret -Force
+                $DetailedSecret | Add-TooManyMeta -Force
             }
         }
     } else {
@@ -195,17 +196,22 @@ Function Set-TooManySecret() {
         [SecureString]$SecureValue,
         [switch]$DisablePrevious,
         [switch]$PassThru,
+        [switch]$ImportTags,
         [hashtable]$Property=@{}
     )
 Process {
-    ForEach ($ParamName in ($PSCmdlet.MyInvocation.BoundParameters.Keys | Where-Object { @("Secret","Name","Property","SecureValue","DisablePrevious","PassThru") -notcontains $_ } )) {
-        $Property.$ParamName = $PSCmdlet.MyInvocation.BoundParameters.$ParamName
+    $SetProperties = @{}
+    ForEach ($Prop in $Property.Keys) { $SetProperties.$Prop = $Property.$Prop}
+    
+    ForEach ($ParamName in ($PSCmdlet.MyInvocation.BoundParameters.Keys | Where-Object { @("Secret","Name","Property","SecureValue","DisablePrevious","ImportTags") -notcontains $_ } )) {
+        $SetProperties.$ParamName = $PSCmdlet.MyInvocation.BoundParameters.$ParamName
     }
+
     If ($Secret) {
         $Name = $Secret.Name
-        $MetaResult = Set-TooManyMeta -InputObject $Secret -Property $Property
+        $MetaResult = Set-TooManyMeta -InputObject $Secret -Property $SetProperties -ImportTags:$ImportTags
     } else {
-        $MetaResult = Set-TooManyMeta -Name $Name -Property $Property
+        $MetaResult = Set-TooManyMeta -Name $Name -Property $SetProperties
     }
 
     $SecretUpdate = $Secret | Update-TooManySecret

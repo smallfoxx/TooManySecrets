@@ -3,7 +3,7 @@ $SpecialRowProperties = @("Etag","PartitionKey","RowKey","TableTimestamp")
 $CommonParameters = @("Debug","ErrorAction","ErrorVariable","InformationAction","InformationVariable","OutVariable","OutBuffer","PipelineVariable","Verbose","WarningAction","WarningVariable","WhatIf","Confirm","PassThru")
 $ExcludeProperties = $SpecialRowProperties + `
     $CommonParameters + `
-    @("Attributes","ContentType","Created","Enabled","Expires","Id","Name","NotBefore","SecretValue","SecretValueText","Tags","TagsTable","Updated","VaultName","Version")
+    @("ImportTags","Attributes","ContentType","Created","Enabled","Expires","Id","Name","NotBefore","SecretValue","SecretValueText","Tags","TagsTable","Updated","VaultName","Version")
 
 Function Get-TooManyMeta() {
 <#
@@ -52,25 +52,41 @@ Function Set-TooManyMeta() {
     AzTable
     #>
     param([parameter(ParameterSetName="ByObject",ValueFromPipeline=$true,Mandatory=$true,Position=1)][PSObject]$InputObject,
+        [parameter(ParameterSetName="ByObject",ValueFromPipeline=$true,Mandatory=$true,Position=1)][switch]$ImportTags,
         [parameter(ParameterSetName="ByName",Mandatory=$true,Position=1)][string]$Name,
         [hashtable]$Property=@{})
-    
-    If ($PSCmdlet.ParameterSetName -eq "ByObject") {
+
+Process {
+    $SetProperties = @{}
+    ForEach ($Prop in $Property.Keys) { $SetProperties.$Prop = $Property.$Prop}
+
+    If ($InputObject) {
         $Name = $InputObject.Name 
         $PropNames = $InputObject | Get-Member -MemberType *Property | Where-Object { $ExcludeProperties -notcontains $_.Name } | ForEach-Object { $_.name }
+
+        $SetProperties.SecretID = $InputObject.ID
         ForEach ($PropName in $PropNames) {
-            If (-not $Property.ContainsKey($PropName)) {
-                $Property.$PropName = $InputObject.$PropName
+            If (-not $SetProperties.ContainsKey($PropName)) {
+                $SetProperties.$PropName = $InputObject.$PropName
+            }
+        }
+
+        If ($ImportTags) {
+            ForEach ($Tag in ($InputObject.Tags.Keys | Where-Object{ -not $SetProperties.ContainsKey( $_ ) } ) ) {
+                $SetProperties.$Tag = $InputObject.Tags.$Tag
             }
         }
     }
 
-    $addResult = Add-AzTableRow -Table $TMSTable -PartitionKey "Secrets" -RowKey $Name -UpdateExisting -Property $Property
+    write-host "$Name"
+    $addResult = Add-AzTableRow -Table $TMSTable -PartitionKey "Secrets" -RowKey $Name -UpdateExisting -Property $SetProperties
     If ($addResult) {
         If ($addResult.HttpStatusCode -lt 400 -and $addResult.HttpStatusCode -ge 200) {
             return $addResult.Result.Properties 
         }
     }
+}
+
 }
 
 function Add-TooManyMeta () {

@@ -17,7 +17,7 @@ Set-Variable -Name "TMSStorage" `
 
 Set-Variable -Name "TMSTable" `
     -Value $null `
-    -Scope Global -Visibility Private
+    -Scope Global -Visibility Public
 
 #endregion
 
