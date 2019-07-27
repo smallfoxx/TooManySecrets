@@ -1,6 +1,10 @@
 
 $SpecialRowProperties = @("Etag","PartitionKey","RowKey","TableTimestamp")
- 
+$CommonParameters = @("Debug","ErrorAction","ErrorVariable","InformationAction","InformationVariable","OutVariable","OutBuffer","PipelineVariable","Verbose","WarningAction","WarningVariable","WhatIf","Confirm","PassThru")
+$ExcludeProperties = $SpecialRowProperties + `
+    $CommonParameters + `
+    @("Attributes","ContentType","Created","Enabled","Expires","Id","Name","NotBefore","SecretValue","SecretValueText","Tags","TagsTable","Updated","VaultName","Version")
+
 Function Get-TooManyMeta() {
 <#
 .SYNOPSIS
@@ -39,7 +43,7 @@ Function Set-TooManyMeta() {
     .PARAMETER Name
     The name of a Secret in the current Azure subscription.
     .EXAMPLE
-    PS> Get-TooManyMeta -Name "MySecret"
+    PS> Set-TooManyMeta -Name "MySecret" -Property @{ "Col1"="Value1"; "Col2"="Value2" }
     
     .LINK
     Get-TooManyKeyVault
@@ -47,16 +51,27 @@ Function Set-TooManyMeta() {
     Get-AzKeyVault
     AzTable
     #>
-        param([string]$Name,
-            [hashtable]$Property)
+    param([parameter(ParameterSetName="ByObject",ValueFromPipeline=$true,Mandatory=$true,Position=1)][PSObject]$InputObject,
+        [parameter(ParameterSetName="ByName",Mandatory=$true,Position=1)][string]$Name,
+        [hashtable]$Property=@{})
     
-        $addResult = Add-AzTableRow -Table $TMSTable -PartitionKey "Secrets" -RowKey $Name -UpdateExisting -Property $Property
-        If ($addResult) {
-            If ($addResult.HttpStatusCode -lt 400 -and $addResult.HttpStatusCode -ge 200) {
-                return $addResult.Result.Properties 
+    If ($PSCmdlet.ParameterSetName -eq "ByObject") {
+        $Name = $InputObject.Name 
+        $PropNames = $InputObject | Get-Member -MemberType *Property | Where-Object { $ExcludeProperties -notcontains $_.Name } | ForEach-Object { $_.name }
+        ForEach ($PropName in $PropNames) {
+            If (-not $Property.ContainsKey($PropName)) {
+                $Property.$PropName = $InputObject.$PropName
             }
         }
     }
+
+    $addResult = Add-AzTableRow -Table $TMSTable -PartitionKey "Secrets" -RowKey $Name -UpdateExisting -Property $Property
+    If ($addResult) {
+        If ($addResult.HttpStatusCode -lt 400 -and $addResult.HttpStatusCode -ge 200) {
+            return $addResult.Result.Properties 
+        }
+    }
+}
 
 function Add-TooManyMeta () {
     param(

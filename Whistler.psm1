@@ -50,7 +50,7 @@ param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
     [securestring]$Key,
     [switch]$AsPlainText)
 
-    $Secret = Get-TooManySecret -Name $Name | Select-Object -First 1
+    $Secret = Get-TooManySecret -Name $Name -ExcludeMetadata | Select-Object -First 1
     $Secret | Convert-SecretToPassword -AsPlainText:$AsPlainText -Key $Key 
 }
 
@@ -98,7 +98,7 @@ param([parameter(Mandatory=$true)][string]$Name,
         )
     
     If ($DisablePrevious) {
-        $OldSecret = Get-TooManySecret -Name $Name
+        $OldSecret = Get-TooManySecret -Name $Name -ExcludeMetadata
         if ($OldSecret) {
             $OldSecret | Update-AzKeyVaultSecret -Enable:$false
         }
@@ -183,12 +183,46 @@ Process {
 }
 
 Function Set-TooManySecret() {
+    param(
+        [parameter(ParameterSetName="ByObject",ValueFromPipeline=$true,Mandatory=$true,Position=1)][PSObject]$Secret,
+        [parameter(ParameterSetName="ByName",Mandatory=$true,Position=1)][string]$Name,
+        [string]$URL,
+        [string]$Username,
+        [string]$Server,
+        [string]$Domain,
+        [string]$FQDN,
+        [string]$UPN,
+        [SecureString]$SecureValue,
+        [switch]$DisablePrevious,
+        [switch]$PassThru,
+        [hashtable]$Property=@{}
+    )
+Process {
+    ForEach ($ParamName in ($PSCmdlet.MyInvocation.BoundParameters.Keys | Where-Object { @("Secret","Name","Property","SecureValue","DisablePrevious","PassThru") -notcontains $_ } )) {
+        $Property.$ParamName = $PSCmdlet.MyInvocation.BoundParameters.$ParamName
+    }
+    If ($Secret) {
+        $Name = $Secret.Name
+        $MetaResult = Set-TooManyMeta -InputObject $Secret -Property $Property
+    } else {
+        $MetaResult = Set-TooManyMeta -Name $Name -Property $Property
+    }
+
+    $SecretUpdate = $Secret | Update-TooManySecret
+
+    If ($SecureValue) {
+        Set-TooManyPassword -SecureValue $SecureValue -Name $Name -DisablePrevious:$DisablePrevious
+    }
+
+    If ($PassThru) {
+        Get-TooManySecret -Name $Name
+    }
+}
 
 }
 
 Function Update-TooManySecret() {
-    param([parameter(ValueFromPipeline=$true,Mandatory=$true)][PSKeyVaultSecret]$Secret,
-        [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault))
+    param([parameter(ValueFromPipeline=$true,Mandatory=$true)][Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecret]$Secret)
 
 Process {
     $Secret | Update-AzKeyVaultSecret
