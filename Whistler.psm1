@@ -211,6 +211,7 @@ Process {
         $Name = $Secret.Name
         $MetaResult = Set-TooManyMeta -InputObject $Secret -Property $SetProperties -ImportTags:$ImportTags
     } else {
+        $Secret = Get-TooManySecret -Name $Name
         $MetaResult = Set-TooManyMeta -Name $Name -Property $SetProperties
     }
 
