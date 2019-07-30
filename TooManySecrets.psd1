@@ -12,7 +12,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.3.29.1633'
+ModuleVersion = '0.4.31.2125'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -73,6 +73,7 @@ RequiredModules = @(@{ModuleName = 'Az.Accounts'; GUID = '17a2feff-488b-47f9-872
 # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
 NestedModules = @('Whistler.psm1', 
                'Mother.psm1',
+               'Liz.psm1',
                'Carl.psm1')
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
