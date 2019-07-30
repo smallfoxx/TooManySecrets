@@ -95,7 +95,13 @@ function Add-TooManyMeta () {
         [switch]$Force
         )
 
-Begin {}
+Begin {
+    If (Test-TooManyTable) {
+
+    } else {
+        exit
+    }
+}
 Process {
     switch ($InputObject.GetType().Name) {
         "PSKeyVaultSecret" {
@@ -124,8 +130,6 @@ Process {
 $aliases = @{ "Get-TooManyMeta"=@() }
 $aliases += @{ "Set-TooManyMeta"=@() }
 $aliases += @{ "Add-TooManyMeta"=@() }
-#$aliases += @{ "Tes-TooManyKeyVault"=@() }
-#$aliases += @{ "Select-TooManyKeyVault"=@("Select-KeyVault") }
 
 #region Publish Members
 foreach ($func in $aliases.Keys) {

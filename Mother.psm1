@@ -79,11 +79,17 @@ Function Get-TooManyKeyVault() {
             If ($TMSKeyVault -and (($TMSKeyVault.VaultName -eq $Name) -xor (-not $Name))) {
                 Write-Debug "Using existing vault [$($TMSKeyVault.VaultName)]..."
                 $KeyVault = $TMSKeyVault
-            } else {
-                $KeyVault = Get-AzKeyVault | Where-Object { $_.VaultName -match $Name } | Select-Object -First 1
-                $TMSKeyVault = $KeyVault
-                Write-Debug "Got new vault [$($TMSKeyVault.VaultName)]..."
+            } elseif (-not $Name -and (Test-TooManySetting -Name "KeyVault")) {
+                $Name = Get-TooManySetting -Name "KeyVault"
+                $KeyVault = Get-AzKeyVault -VaultName $Name
             }
+
+            If (-not $KeyVault) {
+                $KeyVault = Get-AzKeyVault | Where-Object { $_.VaultName -match $Name } | Select-Object -First 1
+                Set-TooManySetting -Name "KeyVault" -Value $KeyVault.VaultName
+                Write-Debug "Got new vault [$($KeyVault.VaultName)]..."
+            }
+
             return $KeyVault
         }
     
@@ -107,7 +113,6 @@ Function Select-TooManyKeyVault() {
         )
         If ($KeyVault) {
             $TMSKeyVault = $KeyVault
-            return $TMSKeyVault
         } elseif (Test-TooManyAzure) {
             If ($TMSKeyVault -and (($TMSKeyVault.VaultName -eq $Name) -xor (-not $Name))) {
                 Write-Debug "Using existing vault [$($TMSKeyVault.VaultName)]..."
@@ -117,9 +122,10 @@ Function Select-TooManyKeyVault() {
                 Write-Debug "Got new vault [$($TMSKeyVault.VaultName)]..."
             }
 
-            Return $TMSKeyVault
         }
     
+        Set-TooManySetting -Name "KeyVault" -Value $TMSKeyVault.VaultName
+        Return $TMSKeyVault
     }
 
 Function Select-TooManyTable() {
@@ -141,7 +147,6 @@ Function Select-TooManyTable() {
         )
         If ($Table) {
             $TMSTable = $Table
-            return $TMSTable
         } elseif (Test-TooManyAzure) {
             If ($TMSTable -and (($TMSTable.Name -eq $Name) -xor (-not $Name))) {
                 Write-Debug "Using existing table [$($TMSTable.Name)]..."
@@ -149,11 +154,15 @@ Function Select-TooManyTable() {
                 If ($StorageAccount) {
                     $TMSStorage = $StorageAccount
                 } elseif ($TMSStorage) {
-
+                } elseif (Test-TooManySetting -Name "StorageAccountName") {
+                    $TMSStorage = Get-AzStorageAccount -ResourceGroupName (Get-TooManySettng -Name "StorageAccountRG") `
+                        -Name (Get-TooManySetting -Name "StorageAccountName")
                 } else {
                     $TMSStorage = Get-AzStorageAccount | Where-Object{ $_.StorageAccountName -match "tmsmeta" }
                 }
                 If ($TMSStorage) {
+                    Set-TooManySetting -Name "StorageAccountRG" -Value $TMSStorage.ResourceGroupName
+                    Set-TooManySetting -Name "StorageAccountName" - Value $TMSStorage.StorageAccountName
                     $Table = (Get-AzStorageTable -Name $Name -Context $TMSStorage.Context).CloudTable
                     If ($Table) {
                         Set-Variable -Name "TMSTable" -Value $Table -Scope Global -Visibility Private
@@ -163,8 +172,10 @@ Function Select-TooManyTable() {
                 Write-Debug "Got new table [$($TMSTable.Name)]..."
             }
 
-            Return $TMSTable
         }
+
+        Set-TooManySetting -Name "Table" -Value $TMSTable.Name
+        Return $TMSTable
     
     }
 
