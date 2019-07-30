@@ -215,11 +215,39 @@ Connect-AzConnect
     If ($Context) {
         $Result = $true
     } elseif (-not $DoNotConnect) {
-        $context = Connect-AzAccount -Tenant $DefaultTooManyTenantID -Subscription $DefaultTooManySubID
-        If ($context) { $Result = $true}
+        $TenantID = Get-TooManySetting -Name "TenantID"
+        $SubID = Get-TooManySetting -Name "SubscriptionID"
+        $context = Connect-AzAccount -Tenant $TenantID -Subscription $SubID #-Tenant $DefaultTooManyTenantID -Subscription $DefaultTooManySubID
+    }
+
+    If ($context) {
+        Set-TooManySetting -Name "TenantID" -Value $Context.Tenant.ToString()
+        Set-TooManySetting -Name "SubscriptionID" -Value $Context.Subscription.ToString()
+        $Result = $true
     }
 
     return $Result
+}
+
+Function Register-TooManySecret() {
+    param([string]$VaultName,
+        [string]$TableName,
+        [string]$ResourceGroupName,
+        [string]$StorageAccountName,
+        [string]$StorageAccountRG = $ResourceGroupName,
+        [string]$AADTenantID = $DefaultTooManyTenantID,
+        [string]$SubscriptionID = $DefaultTooManySubID)
+
+    Register-TooManySetting
+
+    If ($VaultName) { Set-TooManySetting -Name "KeyVault" -Value $VaultName }
+    If ($TableName) { Set-TooManySetting -Name "TMSTable" -Value $TableName }
+    If ($ResourceGroupName) { Set-TooManySetting -Name "ResourceGroupName" -Value $ResourceGroupName }
+    If ($StorageAccountName) { Set-TooManySetting -Name "StorageAccountName" -Value $StorageAccountName }
+    If ($StorageAccountRG) { Set-TooManySetting -Name "StorageAccountRG" -Value $StorageAccountRG }
+    If ($AADTenantID) { Set-TooManySetting -Name "TenantID" -Value $AADTenantID }
+    If ($SubscriptionID) { Set-TooManySetting -Name "SubscriptionID" -Value $SubscriptionID }
+
 }
 
 #region Alias Listings
@@ -229,6 +257,7 @@ $aliases += @{ "Get-TooManyKeyVault"=@() }
 $aliases += @{ "Select-TooManyKeyVault"=@("Select-KeyVault") }
 $aliases += @{ "Select-TooManyTable"=@() }
 $aliases += @{ "Test-TooManyTable"=@() }
+$aliases += @{ "Register-TooManySecret" = @("Register-TooManySecrets") }
 
 #region Publish Members
 foreach ($func in $aliases.Keys) {

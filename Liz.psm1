@@ -14,8 +14,12 @@ Function Set-TooManySetting() {
     param([string]$Path = $RegPath,
         [string]$Name,
         $Value )
-        
-    Set-ItemProperty -Path $Path -Name $Name -Value $Value 
+    
+    If (Test-TooManySetting -Path $Path) {
+        Set-ItemProperty -Path $Path -Name $Name -Value $Value
+    } else {
+        Write-Error "Module not currently registered.  Run Register-TooManySecret to register module."
+    } 
 }
 
 Function Test-TooManySetting() {
@@ -31,7 +35,7 @@ Function Register-TooManySetting() {
     If (Test-TooManySetting $Path) {
 
     } else {
-        New-Item -Path $Path -ItemType 
+        New-Item -Path $Path | Out-Null 
     }
 
     If (Test-TooManySetting -Path $Path -Name "Registered") {
