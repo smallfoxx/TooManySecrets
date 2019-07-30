@@ -162,7 +162,7 @@ Function Select-TooManyTable() {
                 }
                 If ($TMSStorage) {
                     Set-TooManySetting -Name "StorageAccountRG" -Value $TMSStorage.ResourceGroupName
-                    Set-TooManySetting -Name "StorageAccountName" - Value $TMSStorage.StorageAccountName
+                    Set-TooManySetting -Name "StorageAccountName" -Value $TMSStorage.StorageAccountName
                     $Table = (Get-AzStorageTable -Name $Name -Context $TMSStorage.Context).CloudTable
                     If ($Table) {
                         Set-Variable -Name "TMSTable" -Value $Table -Scope Global -Visibility Private
