@@ -47,7 +47,7 @@ Function Update-ModuleDetails() {
 Function Import-TooManySetting() {
     param([string]$SettingsFile=(Get-SettingPath))
 
-    write-host "Settings file [$SettingsFile]"
+    write-Debug "Settings file [$SettingsFile]"
     If (Test-Path $SettingsFile) {
 
     } else {

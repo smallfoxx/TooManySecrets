@@ -174,8 +174,10 @@ Function Select-TooManyTable() {
 
         }
 
-        Set-TooManySetting -Name "Table" -Value $TMSTable.Name
-        Return $TMSTable
+        If ($TMSTable) {
+            Set-TooManySetting -Name "Table" -Value $TMSTable.Name
+            Return $TMSTable
+        }
     
     }
 
