@@ -105,7 +105,7 @@ Function Test-TooManySetting() {
     param([string]$Name)
 
     If (-Not $TMSSettings) { Import-TooManySetting }
-    $TMSSettings.ContainsKey($Name)
+    return ($null -ne ($TMSSettings | Get-Member $Name))
 
 }
 

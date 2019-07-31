@@ -155,7 +155,7 @@ Function Select-TooManyTable() {
                     $TMSStorage = $StorageAccount
                 } elseif ($TMSStorage) {
                 } elseif (Test-TooManySetting -Name "StorageAccountName") {
-                    $TMSStorage = Get-AzStorageAccount -ResourceGroupName (Get-TooManySettng -Name "StorageAccountRG") `
+                    $TMSStorage = Get-AzStorageAccount -ResourceGroupName (Get-TooManySetting -Name "StorageAccountRG") `
                         -Name (Get-TooManySetting -Name "StorageAccountName")
                 } else {
                     $TMSStorage = Get-AzStorageAccount | Where-Object{ $_.StorageAccountName -match "tmsmeta" }
