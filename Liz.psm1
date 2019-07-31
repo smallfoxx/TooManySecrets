@@ -3,6 +3,10 @@ Set-Variable -Name "RegPath" `
     -Option ReadOnly `
     -Visibility Private 
 
+    
+$ExcludeProperties = @("SettingsFile")
+
+
 Function Get-ModuleName() {
 
     If ($PSScriptRoot) {
@@ -19,7 +23,9 @@ Function Get-SettingPath() {
     $DefaultSharedPath = $PSScriptRoot
     $ConfigFileName = "$(Get-ModuleName).json"
 
-    If ($UserOnly -or (-not $DefaultSettings -and (Test-Path "$DefaultUserPath\$ConfigFileName"))) {
+    If ($TMSSetting -and -not $UserOnly) {
+        return $TMSSetting.SettingsFile
+    } elseif ($UserOnly -or (-not $DefaultSettings -and (Test-Path "$DefaultUserPath\$ConfigFileName"))) {
         return "$DefaultUserPath\$ConfigFileName"
     } elseif ( -not $UserOnly -and (Test-Path "$DefaultSharedPath\$ConfigFileName")) {
         return "$DefaultSharedPath\$ConfigFileName"
@@ -43,12 +49,15 @@ Function Import-TooManySetting() {
 
     write-host "Settings file [$SettingsFile]"
     If (Test-Path $SettingsFile) {
-        $Settings = Get-content $SettingsFile | ConvertFrom-Json 
+
     } else {
-        $Settings = Get-Content (Get-SettingPath -DefaultSettings) | ConvertFrom-Json 
+        $SettingsFile = Get-SettingPath -DefaultSettings
     }
 
+    $Settings = Get-Content $SettingsFile | ConvertFrom-Json 
+
     If ($Settings) {
+        $Settings | Add-Member NoteProperty SettingsFile $SettingsFile -Force
         Set-Variable -Name "TMSSettings" -Value $Settings -Scope Global -Visibility Private
         Update-ModuleDetails
         If ($PassThru) { return $TMSSettings }
@@ -58,7 +67,7 @@ Function Import-TooManySetting() {
 Function Export-TooManySetting() {
     param([string]$SettingsFile=(Get-SettingPath))
 
-    $JSONSettings = ConvertTo-Json $TMSSettings
+    $JSONSettings = ConvertTo-Json ($TMSSettings | Select-Object * -ExcludeProperty $ExcludeProperties) 
     try {
         Set-Content -path $SettingsFile -Value $JSONSettings
     } catch {
@@ -87,7 +96,8 @@ Function Set-TooManySetting() {
 
     If (-Not $TMSSettings) { Import-TooManySetting }
     If ($TMSSettings) {
-        $TMSSettings | Add-Member NoteProperty $Name $Value
+        $TMSSettings | Add-Member NoteProperty $Name $Value -Force
+        Export-TooManySetting
     }
 }
 
