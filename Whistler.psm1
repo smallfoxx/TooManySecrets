@@ -172,10 +172,12 @@ Process {
         }
         If ($ExcludeMetadata) {
             $Secret 
-        } elseif ($IncludeVersions) {
-            $Secret | Add-TooManyMeta -Force
-        } else {
-            $Secret | Add-TooManyMeta -Force
+        } elseif ($Secret) {
+            if ($IncludeVersions) {
+                $Secret | Add-TooManyMeta -Force
+            } else {
+                $Secret | Add-TooManyMeta -Force
+            }
         }
     }
 
@@ -209,9 +211,11 @@ Process {
 
     If ($Secret) {
         $Name = $Secret.Name
+        $SetProperties.SecretID = $Secret.Id
         $MetaResult = Set-TooManyMeta -InputObject $Secret -Property $SetProperties -ImportTags:$ImportTags
     } else {
         $Secret = Get-TooManySecret -Name $Name
+        $SetProperties.SecretID = $Secret.Id
         $MetaResult = Set-TooManyMeta -Name $Name -Property $SetProperties
     }
 
