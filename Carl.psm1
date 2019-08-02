@@ -1,9 +1,13 @@
 
-$SpecialRowProperties = @("Etag","PartitionKey","RowKey","TableTimestamp")
+Set-Variable -Name "SpecialRowProperties" `
+    -Value @("Etag","PartitionKey","RowKey","TableTimestamp") `
+    -Option AllScope
+#$SpecialRowProperties = @("Etag","PartitionKey","RowKey","TableTimestamp")
 $CommonParameters = @("Debug","ErrorAction","ErrorVariable","InformationAction","InformationVariable","OutVariable","OutBuffer","PipelineVariable","Verbose","WarningAction","WarningVariable","WhatIf","Confirm","PassThru")
-$ExcludeProperties = $SpecialRowProperties + `
+$ExcludeMetaProperties = $SpecialRowProperties + `
     $CommonParameters + `
     @("ImportTags","Attributes","ContentType","Created","Enabled","Expires","Id","Name","NotBefore","SecretValue","SecretValueText","Tags","TagsTable","Updated","VaultName","Version")
+
 
 Function Get-TooManyMeta() {
 <#
@@ -27,7 +31,7 @@ Get-AzKeyVault
         Write-Debug "Using table [$($TMSTable.Name)]..."
         $row = Get-AzTableRow -Table $TMSTable -PartitionKey "Secrets" -RowKey $Name
         If ($Row) {
-            return ($row | Select-Object -ExcludeProperty $SpecialRowProperties)
+            return ($row | Select-Object * -ExcludeProperty $SpecialRowProperties)
         } else {
             return $null
         }
@@ -62,7 +66,7 @@ Process {
 
     If ($InputObject) {
         $Name = $InputObject.Name 
-        $PropNames = $InputObject | Get-Member -MemberType *Property | Where-Object { $ExcludeProperties -notcontains $_.Name } | ForEach-Object { $_.name }
+        $PropNames = $InputObject | Get-Member -MemberType *Property | Where-Object { $ExcludeMetaProperties -notcontains $_.Name } | ForEach-Object { $_.name }
 
         $SetProperties.SecretID = $InputObject.ID
         ForEach ($PropName in $PropNames) {

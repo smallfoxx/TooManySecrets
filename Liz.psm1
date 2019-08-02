@@ -3,8 +3,11 @@ Set-Variable -Name "RegPath" `
     -Option ReadOnly `
     -Visibility Private 
 
+Set-Variable -Name "TMSSettingsTable" `
+    -Value $null `
+    -Option AllScope
     
-$ExcludeProperties = @("SettingsFile")
+$ExcludeSettingProperties = @("SettingsFile")
 
 
 Function Get-ModuleName() {
@@ -38,14 +41,38 @@ Function Update-ModuleDetails() {
         $Module = Get-Module ($TMSSettings.ModuleName)
         If ($Module) {
             Set-TooManySetting -Name "ModuleVersion" -Value $Module.Version
-            Set-TooManySetting -Name "ModulePath" -Value $Module.Path
+            If ($Module.Path -like "$HOME*") { 
+                Set-TooManySetting -Name "ModulePath" -Value ("{0}{1}" -f "`$HOME",($Module.Path.Remove(0,$HOME.Length)))
+            } else {
+                Set-TooManySetting -Name "ModulePath" -Value $Module.Path
+            }
         }
     }
 
 }
 
+Function Reset-TooManySettings() {
+    param([switch]$DoNotImport,
+        [switch]$Save)
+
+    If ($TMSSettings) {
+        write-host "Resetting..."
+    
+        If ($Save) {
+            Export-TooManySetting
+        }
+
+        Set-Variable -Name "TMSSettings" -Scope Global -Value $TMSSettings -Visibility Public
+        Remove-Variable -Name "TMSSettings" -Scope Global -Force
+    }
+
+    If (-not $DoNotImport) {
+        Import-TooManySetting
+    }
+}
 Function Import-TooManySetting() {
-    param([string]$SettingsFile=(Get-SettingPath))
+    param([string]$SettingsFile=(Get-SettingPath),
+        [switch]$UpdateFromTable)
 
     write-Debug "Settings file [$SettingsFile]"
     If (Test-Path $SettingsFile) {
@@ -58,8 +85,17 @@ Function Import-TooManySetting() {
 
     If ($Settings) {
         $Settings | Add-Member NoteProperty SettingsFile $SettingsFile -Force
-        Set-Variable -Name "TMSSettings" -Value $Settings -Scope Global -Visibility Private
+        Set-Variable -Name "TMSSettings" -Value $Settings -Scope Global #-Visibility Private
         Update-ModuleDetails
+        If ($TMSSettings.SettingsTableName) {
+            If (-not $TMSSettingsTable) { Select-TooManySettingsTable }
+            If ($TMSSettingsTable) {
+                $SettingsRow = Get-AzTableRow -Table $TMSTable -PartitionKey "Secrets" -RowKey "TMSSettings" | Select-Object * -ExcludeProperty $SpecialRowProperties
+                ForEach ($Column in ($SettingsRow | Get-Member -MemberType *Property)) {
+                    Set-TooManySetting -Name $Column.Name -Value $SettingsRow.($ColumnName) -DoNotOverwrite:(-not $UpdateFromTable)
+                }
+            }
+        }
         If ($PassThru) { return $TMSSettings }
     }
 }
@@ -67,11 +103,24 @@ Function Import-TooManySetting() {
 Function Export-TooManySetting() {
     param([string]$SettingsFile=(Get-SettingPath))
 
-    $JSONSettings = ConvertTo-Json ($TMSSettings | Select-Object * -ExcludeProperty $ExcludeProperties) 
+    #Write-Debug "Using settings file [$SettingsFile]..."
+    If ($SettingsFile -ne (Get-TooManySetting -Name SettingsFile)) { $TMSSettings.SettingsFile = $SettingsFile }
+    $SettingsToExport = ($TMSSettings | Select-Object * -ExcludeProperty $ExcludeSettingProperties)
+    $SettingsHash = @{}
+    ForEach ($SettingProperty in ($SettingsToExport | Get-Member -MemberType *Property )) {
+        $SettingsHash.($SettingProperty.Name) = $TMSSettings.($SettingProperty.Name)
+    }
+    If ($TMSSettingsTable) {
+        Add-AzTableRow -Table $TMSSettingsTable -PartitionKey "Secrets" -RowKey "TMSSettings" `
+            -UpdateExisting -property $SettingsHash | Out-Null
+    }
+    $JSONSettings = ConvertTo-Json $SettingsToExport 
     try {
-        Set-Content -path $SettingsFile -Value $JSONSettings
+        Write-Debug "Writing settings to file [$SettingsFile]..."
+        Set-Content -path $SettingsFile -Value $JSONSettings -ErrorAction Continue
     } catch {
         $UserSettingsFile = Get-SettingPath -UserOnly
+        Write-Debug "Attempting to write settings to user profile [$UserSettingsFile]..."
         If ($SettingsFile -ne $UserSettingsFile) {
             $Folder = Split-Path $UserSettingsFile
             If (-not (Test-Path $folder)) { New-item -Path $Folder -ItemType Directory | Out-Null } 
@@ -92,12 +141,41 @@ Function Get-TooManySetting() {
 
 Function Set-TooManySetting() {
     param([string]$Name,
-        $Value )
+        $Value,
+        [switch]$DoNotOverwrite )
 
     If (-Not $TMSSettings) { Import-TooManySetting }
     If ($TMSSettings) {
-        $TMSSettings | Add-Member NoteProperty $Name $Value -Force
-        Export-TooManySetting
+        If (-not ($DoNotOverwrite -and $TMSSettings.$Name)) {
+            $TMSSettings | Add-Member NoteProperty $Name $Value -Force
+            Export-TooManySetting
+        }
+    }
+}
+
+Function Select-TooManySettingsTable() {
+    param([string]$TableName=(Get-TooManySetting -Name "SettingsTableName"),
+        [string]$StorageAccountName=(Get-TooManySetting -Name "StorageAccountName"),
+        [string]$StorageAccountRG=(Get-TooManySetting -Name "StorageAccountRG") )
+
+    If ($TMSSettings) {
+        If ($TableName -and $StorageAccountName -and $StorageAccountRG) {
+            If ($TMSStorage.StorageAccountName -eq $StorageAccountName -and $TMSStorage.ResourceGroupName -eq $StorageAccountRG) {
+                $SettingsStorage = $TMSStorage
+            } else {
+                $SettingsStorage = Get-AzStorageAccount -ResourceGroupName $StorageAccountRG `
+                    -Name $StorageAccountName
+            }
+            If ($SettingsStorage) {
+                $TMSSettingsTable = (Get-AzStorageTable -Name $TableName -Context $SettingsStorage.Context -ErrorAction SilentlyContinue).CloudTable
+                If ($TMSSettingsTable) {
+                    Set-TooManySetting -Name "StorageAccountName" -Value $StorageAccountName -DoNotOverwrite
+                    Set-TooManySetting -Name "StorageAccountRG" -Value $StorageAccountRG -DoNotOverwrite
+                    Set-TooManySetting -Name "SettingsTableName" -Value $TableName
+                }
+            }
+        }
+
     }
 }
 
@@ -130,6 +208,8 @@ $aliases += @{ "Test-TooManySetting"=@() }
 $aliases += @{ "Register-TooManySetting"=@() }
 $aliases += @{ "Import-TooManySetting"=@() }
 $aliases += @{ "Export-TooManySetting"=@() }
+$aliases += @{ "Select-TooManySettingsTable"=@() }
+$aliases += @{ "Reset-TooManySettings"=@() }
 $aliases += @{ "Get-Variables"=@() }
 
 #region Publish Members
