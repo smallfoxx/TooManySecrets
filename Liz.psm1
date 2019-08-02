@@ -85,7 +85,7 @@ Function Import-TooManySetting() {
 
     If ($Settings) {
         $Settings | Add-Member NoteProperty SettingsFile $SettingsFile -Force
-        Set-Variable -Name "TMSSettings" -Value $Settings -Scope Global #-Visibility Private
+        Set-Variable -Name "TMSSettings" -Value $Settings -Scope Global -Visibility Private
         Update-ModuleDetails
         If ($TMSSettings.SettingsTableName) {
             If (-not $TMSSettingsTable) { Select-TooManySettingsTable }
