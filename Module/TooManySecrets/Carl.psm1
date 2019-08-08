@@ -130,10 +130,35 @@ Process {
 }
 }
 
+Function Get-TooManyMetaList() {
+    param(
+        [switch]$IncludeMetadata
+    )
+
+    If (Test-TooManyTable) {
+        Write-Debug "Using table [$($TMSTable.Name)]..."
+        $allRows = Get-AzTableRow -Table $TMSTable -PartitionKey "Secrets"
+        If ($allRows) {
+            ForEach ($row in $allRows) { $row | Add-Member NoteProperty Name $row.RowKey -ErrorAction SilentlyContinue }
+            If ($IncludeMetadata) {
+                $resultList = ($allRows | Select-Object * -ExcludeProperty $SpecialRowProperties)
+            } else {
+                $resultList = ($allRows | Select-Object Name )
+            }
+        } else {
+            $resultList = $null
+        }
+
+        Return $resultList
+    }
+
+}
+
 #region Alias Listings
 $aliases = @{ "Get-TooManyMeta"=@() }
 $aliases += @{ "Set-TooManyMeta"=@() }
 $aliases += @{ "Add-TooManyMeta"=@() }
+$aliases += @{ "Get-TooManyMetaList"=@() }
 
 #region Publish Members
 foreach ($func in $aliases.Keys) {

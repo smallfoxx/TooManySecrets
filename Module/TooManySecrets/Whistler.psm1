@@ -88,7 +88,7 @@ Get-TooManySecret
 Get-AzKeyVaultSecret
 #> 
 [CmdletBinding(DefaultParameterSetname="PlainText")]
-param([parameter(Mandatory=$true)][string]$Name,
+param([parameter(Mandatory=$true)][ValidatePattern("^[0-9a-zA-Z-]+$")][string]$Name,
         [parameter(ParameterSetName="PlainText",Mandatory=$true)][string]$Value,
         [parameter(ParameterSetName="SecureString",Mandatory=$true)][SecureString]$SecureValue,
         [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault),
@@ -123,7 +123,7 @@ param([parameter(Mandatory=$true)][string]$Name,
 }
 
 Function New-TooManyPassword() {
-    param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
+    param([parameter(ValueFromPipeline=$true,Mandatory=$true)][ValidatePattern("^[0-9a-zA-Z-]+$")][string]$Name,
         [switch]$ReturnPlainText,
         [switch]$DisablePrevious)
 
@@ -188,7 +188,7 @@ Process {
 Function Set-TooManySecret() {
     param(
         [parameter(ParameterSetName="ByObject",ValueFromPipeline=$true,Mandatory=$true,Position=1)][PSObject]$Secret,
-        [parameter(ParameterSetName="ByName",Mandatory=$true,Position=1)][string]$Name,
+        [parameter(ParameterSetName="ByName",Mandatory=$true,Position=1)][ValidatePattern("^[0-9a-zA-Z-]+$")][string]$Name,
         [string]$URL,
         [string]$Username,
         [string]$Server,
@@ -238,6 +238,16 @@ Function Update-TooManySecret() {
 Process {
     $Secret | Update-AzKeyVaultSecret
 }
+
+}
+
+Function Get-TooManySecretList() {
+    param(
+        [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault),
+        [switch]$IncludeMetadata
+    )
+
+    Get-TooManyMetaList -IncludeMetadata:$IncludeMetadata
 
 }
 
