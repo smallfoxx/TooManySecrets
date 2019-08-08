@@ -164,9 +164,8 @@ Function Select-TooManyTable() {
                     Set-TooManySetting -Name "StorageAccountRG" -Value $TMSStorage.ResourceGroupName
                     Set-TooManySetting -Name "StorageAccountName" -Value $TMSStorage.StorageAccountName
                     If (-not $Name) { $Name = Get-TooManySetting -Name KeyVault }
-                    write-host "TMSStorage: $($TMSStorage.StorageAccountName) - $($TMSStorage.Context.Gettype())"
-                    write-host "Name: $Name - $($Name.GetType())"
-                    write-host "Table: $($Table.GetType())"
+                    write-Debug "TMSStorage: $($TMSStorage.StorageAccountName) - $($TMSStorage.Context.Gettype())"
+                    write-Debug "Name: $Name - $($Name.GetType())"
                     
                     $Table = (Get-AzStorageTable -Name $Name -Context $TMSStorage.Context).CloudTable
                     If ($Table) {
