@@ -137,7 +137,7 @@ Function Get-TooManyMetaList() {
 
     If (Test-TooManyTable) {
         Write-Debug "Using table [$($TMSTable.Name)]..."
-        $allRows = Get-AzTableRow -Table $TMSTable -PartitionKey "Secrets"
+        $allRows = Get-AzTableRow -Table $TMSTable -PartitionKey "Secrets" | Sort-Object -Property RowKey 
         If ($allRows) {
             ForEach ($row in $allRows) { $row | Add-Member NoteProperty Name $row.RowKey -ErrorAction SilentlyContinue }
             If ($IncludeMetadata) {

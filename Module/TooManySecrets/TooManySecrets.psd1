@@ -12,7 +12,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.4.35.0328'
+ModuleVersion = '0.4.47.0210'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -122,7 +122,7 @@ PrivateData = @{
         # IconUri = ''
 
         # ReleaseNotes of this module
-        ReleaseNotes = 'Implemented MetaData storage with Azure Table and local defaults in JSON config file'
+        ReleaseNotes = 'Adding functions to get full list of entries and minor fixes'
 
         # External dependent modules of this module
         # ExternalModuleDependencies = ''

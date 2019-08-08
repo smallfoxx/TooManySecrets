@@ -361,6 +361,7 @@ $aliases += @{ "Get-TooManySecret"=@("Get-Secret") }
 $aliases += @{ "Set-TooManySecret"=@("Set-Secret") }
 $aliases += @{ "Update-TooManySecret"=@("Update-Secret") }
 $aliases += @{ "Convert-TooManyKey"=@("Convert-Key") }
+$aliases += @{ "Get-TooManySecretList"=@("Get-SecretList") }
 
 #region Publish Members
 foreach ($func in $aliases.Keys) {
