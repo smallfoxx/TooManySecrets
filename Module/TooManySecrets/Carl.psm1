@@ -95,7 +95,9 @@ Process {
 
 function Add-TooManyMeta () {
     param(
-        [parameter(ParameterSetName="ByIdentityItem",ValueFromPipeline=$true,Mandatory=$true,Position=1)][Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecretIdentityItem]$InputObject,
+        [parameter(ParameterSetName="ByIdentityItem",ValueFromPipeline=$true,Mandatory=$true,Position=1)]
+        [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecretIdentityItem]
+        $InputObject,
         [switch]$Force
         )
 
@@ -114,6 +116,7 @@ Process {
             If ($Metadata) {
                 $Properties = $Metadata | Get-Member -MemberType *Propert* | Where-Object { $SpecialRowProperties -notcontains $_.name }
                 ForEach ($Property in $Properties) {
+                    Write-Debug "Adding member [$($Property.Name)]" #-ForegroundColor Yellow
                     $InputObject | Add-Member -MemberType $Property.MemberType -Name $Property.Name -Value ($Metadata.($Property.Name)) -Force:$Force
                 }
             }

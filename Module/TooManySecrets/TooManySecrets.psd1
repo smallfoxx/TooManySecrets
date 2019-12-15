@@ -71,10 +71,12 @@ RequiredModules = @(@{ModuleName = 'Az.Accounts'; GUID = '17a2feff-488b-47f9-872
 # FormatsToProcess = @()
 
 # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
-NestedModules = @('Whistler.psm1', 
-               'Mother.psm1',
-               'Liz.psm1',
-               'Carl.psm1')
+NestedModules = @(
+                'Whistler.psm1', #main module for calls with passwords and secrets
+               'Mother.psm1',  #working with the KeyVault directly
+               'Liz.psm1', #managing the module and its settings
+               'Carl.psm1' #working with the meta data and details
+               )
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 <# FunctionsToExport = 'Set-TooManySecret', 'Set-TooManySecretyProperty', 

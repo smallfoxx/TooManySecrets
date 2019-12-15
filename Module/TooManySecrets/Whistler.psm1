@@ -4,6 +4,10 @@ Set-Variable -Name "DefaultCharSet" `
     -Visibility Private 
  
 Function Convert-SecretToPassword() {
+    <#
+    .SYNOPSIS
+    Given a Secret object, return just the secret's value. 
+    #>
     param([parameter(ValueFromPipeline=$true,Mandatory=$true)]$Secret,
         [securestring]$Key,
         [switch]$AsPlainText)
