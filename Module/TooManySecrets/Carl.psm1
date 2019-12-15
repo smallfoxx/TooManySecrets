@@ -31,6 +31,7 @@ Get-AzKeyVault
         Write-Debug "Using table [$($TMSTable.Name)]..."
         $row = Get-AzTableRow -Table $TMSTable -PartitionKey "Secrets" -RowKey $Name
         If ($Row) {
+            Write-Debug "Returning [$($Row.count)] row(s)"
             return ($row | Select-Object * -ExcludeProperty $SpecialRowProperties)
         } else {
             return $null
@@ -114,11 +115,14 @@ Process {
             Write-Debug "By secret: $($InputObject.GetType())"
             $Metadata = Get-TooManyMeta -Name $InputObject.Name
             If ($Metadata) {
+                Write-Debug "metadata"
                 $Properties = $Metadata | Get-Member -MemberType *Propert* | Where-Object { $SpecialRowProperties -notcontains $_.name }
                 ForEach ($Property in $Properties) {
                     Write-Debug "Adding member [$($Property.Name)]" #-ForegroundColor Yellow
                     $InputObject | Add-Member -MemberType $Property.MemberType -Name $Property.Name -Value ($Metadata.($Property.Name)) -Force:$Force
                 }
+            } else {
+                Write-Debug "No meta data"
             }
             $InputObject
         }
