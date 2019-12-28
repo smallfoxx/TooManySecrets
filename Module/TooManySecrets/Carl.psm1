@@ -31,7 +31,6 @@ Get-AzKeyVault
         Write-Debug "Using table [$($TMSTable.Name)]..."
         $row = Get-AzTableRow -Table $TMSTable -PartitionKey "Secrets" -RowKey $Name
         If ($Row) {
-            Write-Debug "Returning [$($Row.count)] row(s)"
             return ($row | Select-Object * -ExcludeProperty $SpecialRowProperties)
         } else {
             return $null
@@ -115,7 +114,7 @@ Process {
             Write-Debug "By secret: $($InputObject.GetType())"
             $Metadata = Get-TooManyMeta -Name $InputObject.Name
             If ($Metadata) {
-                Write-Debug "metadata"
+                Write-Debug ("existing props: [{0}]" -f (($InputObject | Get-member -MemberType *Propert* | %{ $_.name }) -join ",")) 
                 $Properties = $Metadata | Get-Member -MemberType *Propert* | Where-Object { $SpecialRowProperties -notcontains $_.name }
                 ForEach ($Property in $Properties) {
                     Write-Debug "Adding member [$($Property.Name)]" #-ForegroundColor Yellow
@@ -142,21 +141,24 @@ Function Get-TooManyMetaList() {
         [switch]$IncludeMetadata
     )
 
+    write-host ("{0:HH:mm:ss.fff} - before test" -f (Get-date))
     If (Test-TooManyTable) {
+        write-host ("{0:HH:mm:ss.fff} - post test" -f (Get-date))
         Write-Debug "Using table [$($TMSTable.Name)]..."
         $allRows = Get-AzTableRow -Table $TMSTable -PartitionKey "Secrets" | Sort-Object -Property RowKey 
+        write-host ("{0:HH:mm:ss.fff} - post get row" -f (Get-date))
         If ($allRows) {
             ForEach ($row in $allRows) { $row | Add-Member NoteProperty Name $row.RowKey -ErrorAction SilentlyContinue }
+            write-host ("{0:HH:mm:ss.fff} - post for each" -f (Get-date))
             If ($IncludeMetadata) {
-                $resultList = ($allRows | Select-Object * -ExcludeProperty $SpecialRowProperties)
+                return ($allRows | Select-Object * -ExcludeProperty $SpecialRowProperties)
             } else {
-                $resultList = ($allRows | Select-Object Name )
+                return ($allRows | Select-Object Name)
             }
         } else {
-            $resultList = $null
+            return $null
         }
 
-        Return $resultList
     }
 
 }

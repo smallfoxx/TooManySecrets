@@ -72,9 +72,12 @@ Function Get-TooManyKeyVault() {
     .EXAMPLE
     PS> $MyVaut = Get-TooManyKeyVault -Name "MyVault"
     #>
-    param([string]$Name)
-    #TODO: change code to look for global or module variable 
-    #TODO: set get-azkeyvault to be more specific, at least by default
+    param([string]$Name,
+        [switch]$Refresh)
+
+    if (-not $Refresh -and (((-not $name) -and $script:TMSKeyvault) -or  ($script:TMSKeyvault -and ($script:TMSKeyvault.Name -eq $name)))) {
+        $script:TMSKeyvault
+    } else {
         If (Test-TooManyAzure) {
             If ($TMSKeyVault -and (($TMSKeyVault.VaultName -eq $Name) -xor (-not $Name))) {
                 Write-Debug "Using existing vault [$($TMSKeyVault.VaultName)]..."
@@ -90,10 +93,15 @@ Function Get-TooManyKeyVault() {
                 Write-Debug "Got new vault [$($KeyVault.VaultName)]..."
             }
 
-            return $KeyVault
+            If (-not $script:TMSKeyvault) {
+                $script:TMSKeyvault = $KeyVault
+            }
+
+            $KeyVault
         }
     
     }
+}
     
 Function Select-TooManyKeyVault() {
     <#
