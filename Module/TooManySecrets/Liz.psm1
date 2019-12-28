@@ -197,9 +197,9 @@ Function Register-TooManySetting() {
 }
 
 
-function Get-Variables() {
+<#function Get-Variables() {
     Get-Variable
-}
+}#>
 
 #region Alias Listings
 $aliases = @{ "Get-TooManySetting"=@() }
@@ -210,7 +210,7 @@ $aliases += @{ "Import-TooManySetting"=@() }
 $aliases += @{ "Export-TooManySetting"=@() }
 $aliases += @{ "Select-TooManySettingsTable"=@() }
 $aliases += @{ "Reset-TooManySettings"=@() }
-$aliases += @{ "Get-Variables"=@() }
+#$aliases += @{ "Get-Variables"=@() }
 
 #region Publish Members
 foreach ($func in $aliases.Keys) {
