@@ -251,7 +251,6 @@ Function Get-TooManySecretList() {
         [switch]$IncludeMetadata
     )
 
-    write-host ("{0:HH:mm:ss.fff} - post param" -f (Get-date))
     Get-TooManyMetaList -IncludeMetadata:$IncludeMetadata
 
 }

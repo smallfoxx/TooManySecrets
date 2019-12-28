@@ -82,7 +82,7 @@ Process {
         }
     }
 
-    write-host "$Name"
+    write-Debug "Meta for [$Name]"
     $addResult = Add-AzTableRow -Table $TMSTable -PartitionKey "Secrets" -RowKey $Name -UpdateExisting -Property $SetProperties
     If ($addResult) {
         If ($addResult.HttpStatusCode -lt 400 -and $addResult.HttpStatusCode -ge 200) {
@@ -141,15 +141,11 @@ Function Get-TooManyMetaList() {
         [switch]$IncludeMetadata
     )
 
-    write-host ("{0:HH:mm:ss.fff} - before test" -f (Get-date))
     If (Test-TooManyTable) {
-        write-host ("{0:HH:mm:ss.fff} - post test" -f (Get-date))
         Write-Debug "Using table [$($TMSTable.Name)]..."
         $allRows = Get-AzTableRow -Table $TMSTable -PartitionKey "Secrets" | Sort-Object -Property RowKey 
-        write-host ("{0:HH:mm:ss.fff} - post get row" -f (Get-date))
         If ($allRows) {
             ForEach ($row in $allRows) { $row | Add-Member NoteProperty Name $row.RowKey -ErrorAction SilentlyContinue }
-            write-host ("{0:HH:mm:ss.fff} - post for each" -f (Get-date))
             If ($IncludeMetadata) {
                 return ($allRows | Select-Object * -ExcludeProperty $SpecialRowProperties)
             } else {
