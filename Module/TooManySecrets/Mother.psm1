@@ -75,8 +75,8 @@ Function Get-TooManyKeyVault() {
     param([string]$Name,
         [switch]$Refresh)
 
-    if (-not $Refresh -and (((-not $name) -and $script:TMSKeyvault) -or  ($script:TMSKeyvault -and ($script:TMSKeyvault.Name -eq $name)))) {
-        $script:TMSKeyvault
+    if (-not $Refresh -and (($TMSKeyVault -and (-not $name -or ($TMSKeyVault.Name -eq $name))))) {
+        $TMSKeyVault
     } else {
         If (Test-TooManyAzure) {
             If ($TMSKeyVault -and (($TMSKeyVault.VaultName -eq $Name) -xor (-not $Name))) {
@@ -93,8 +93,8 @@ Function Get-TooManyKeyVault() {
                 Write-Debug "Got new vault [$($KeyVault.VaultName)]..."
             }
 
-            If (-not $script:TMSKeyvault) {
-                $script:TMSKeyvault = $KeyVault
+            If (-not $TMSKeyVault) {
+                $TMSKeyVault = $KeyVault
             }
 
             $KeyVault

@@ -50,12 +50,55 @@ Returns the value of the Secret MyPWD in the current Key Vault as a SecureString
 Get-TooManySecret
 Get-AzKeyVaultSecret
 #> 
-param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
+[CmdletBinding()]
+param(#[parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
     [securestring]$Key,
     [switch]$AsPlainText)
+    DynamicParam {
+        $RuntimeParamDic  = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
+        $StandardProps = @('Mandatory','ValueFromPipeline','ValueFromPipelineByPropertyName','ParameterSetName','Position')
+        $Attrib = [ordered]@{
+            'Name' = @{
+                'AttribType' = [string]
+                'Mandatory' = $true
+                'ValueFromPipeline' = $true
+                'ValueFromPipelineByPropertyName' = $true
+                'ParameterSetName' = '__AllParameterSets'
+                'Position' = 1
+                'ValidSet' = (Get-TooManySecretList).Name
+            }
+        }
+        
+        ForEach ($AttribName in $Attrib.Keys) {
+            #[string]$AttribName = $Key.ToString()
+            $ThisAttrib = New-Object System.Management.Automation.ParameterAttribute
+            ForEach ($Prop in $StandardProps) {
+                If ($null -ne $Attrib.$AttribName.$Prop) {
+                    $ThisAttrib.$Prop = $Attrib.$AttribName.$Prop
+                }
+            }
+            $ThisCollection = New-Object  System.Collections.ObjectModel.Collection[System.Attribute]
+            $ThisCollection.Add($ThisAttrib)
 
+            If ($Attrib.$AttribName.ValidSet) {
+                $ThisValidation = New-Object  System.Management.Automation.ValidateSetAttribute($Attrib.$AttribName.ValidSet)
+                $ThisCollection.Add($ThisValidation)
+            }
+
+            $ThisRuntimeParam  = New-Object System.Management.Automation.RuntimeDefinedParameter($AttribName,  $Attrib.$AttribName.AttribType, $ThisCollection)
+            $RuntimeParamDic.Add($AttribName,  $ThisRuntimeParam)
+        }
+
+        return  $RuntimeParamDic
+      
+    }
+
+Process {
+    $Name = $PSBoundParameters.Name
     $Secret = Get-TooManySecret -Name $Name -ExcludeMetadata | Select-Object -First 1
     $Secret | Convert-SecretToPassword -AsPlainText:$AsPlainText -Key $Key 
+}
+
 }
 
 Function Set-TooManyPassword() {
@@ -136,14 +179,55 @@ Function New-TooManyPassword() {
 
 
 Function Get-TooManySecret() {
-    param([parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
-        [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault),
+    [CmdletBinding()]
+    param(
+        [parameter(Position=2)]
+          [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault), 
         [string]$Version,
         [switch]$RegEx,
         [switch]$Like,
         [switch]$ExcludeMetadata,
         [switch]$IncludeVersions
     )
+    DynamicParam {
+        $RuntimeParamDic  = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
+        $StandardProps = @('Mandatory','ValueFromPipeline','ValueFromPipelineByPropertyName','ParameterSetName','Position')
+        $Attrib = [ordered]@{
+            'Name' = @{
+                'AttribType' = [string]
+                'Mandatory' = $true
+                'ValueFromPipeline' = $true
+                'ValueFromPipelineByPropertyName' = $true
+                'ParameterSetName' = '__AllParameterSets'
+                'Position' = 1
+                'ValidSet' = (Get-TooManySecretList).Name
+            }
+        }
+        
+        ForEach ($AttribName in $Attrib.Keys) {
+            #[string]$AttribName = $Key.ToString()
+            $ThisAttrib = New-Object System.Management.Automation.ParameterAttribute
+            ForEach ($Prop in $StandardProps) {
+                If ($null -ne $Attrib.$AttribName.$Prop) {
+                    $ThisAttrib.$Prop = $Attrib.$AttribName.$Prop
+                }
+            }
+            $ThisCollection = New-Object  System.Collections.ObjectModel.Collection[System.Attribute]
+            $ThisCollection.Add($ThisAttrib)
+
+            If ($Attrib.$AttribName.ValidSet) {
+                $ThisValidation = New-Object  System.Management.Automation.ValidateSetAttribute($Attrib.$AttribName.ValidSet)
+                $ThisCollection.Add($ThisValidation)
+            }
+
+            $ThisRuntimeParam  = New-Object System.Management.Automation.RuntimeDefinedParameter($AttribName,  $Attrib.$AttribName.AttribType, $ThisCollection)
+            $RuntimeParamDic.Add($AttribName,  $ThisRuntimeParam)
+        }
+
+        return  $RuntimeParamDic
+      
+    }
+        
 Begin {
     If ($RegEx -or $Like) {
         $Secrets = $KeyVault | Get-AzKeyVaultSecret
@@ -151,6 +235,8 @@ Begin {
 }
 
 Process {
+    $Name = $PSBoundParameters.Name
+
     If ($RegEx -or $Like) {
         If ($RegEx) {
             $FilteredSecrets = $Secrets | Where-Object { $_.Name -match $name }
