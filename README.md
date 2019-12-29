@@ -13,6 +13,8 @@ You can also download this module and copy the folder to either of these two loc
 * %SystemRoot%\System32\WindowsPowerShell\v1.0\Modules\
 * C:\Users\\%Username%\Documents\WindowsPowerShell\Modules\
 
+After the module is installed, you can [Register](https://github.com/smallfoxx/TooManySecrets/wiki/Installation#register) default settings to have the script access resources directly.
+
 # Usage
 Once installed, simply import the module to an active PowerShell session:
   Import-Module TooManySecrets
