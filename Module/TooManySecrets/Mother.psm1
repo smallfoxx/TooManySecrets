@@ -143,15 +143,17 @@ Function Select-TooManyTable() {
     Sets the default table to be used by the module.
     .DESCRIPTION
     Find the first table in the current subscription with the give name.
-    .PARAMETER Name
-    Name given to the Table
     .EXAMPLE
     PS> $MyTable = Select-TooManyKeyVault -Name "MyVault"
     .LINK
     Get-AzKeyVault
     #>
-    param([parameter(ParameterSetName="ByString",Position=1)][string]$Name,
+    param(
+        #Name given to the Table
+        [parameter(ParameterSetName="ByString",Position=1)][string]$Name,
+        #Azure table object to use
         [parameter(ParameterSetName="ByObject",Mandatory=$true,Position=1)][Microsoft.Azure.Cosmos.Table.CloudTable]$Table,
+        #Azure Storage Account object containing the table
         [Microsoft.Azure.Commands.Management.Storage.Models.PSStorageAccount]$StorageAccount
         )
         If ($Table) {
@@ -195,6 +197,12 @@ Function Select-TooManyTable() {
     }
 
 Function Test-TooManyTable() {
+    <#
+    .SYNOPSIS
+    Check to see if table for TMS is available
+    .OUTPUTS
+    boolean
+    #>
     param()
 
     If ($TMSTable) {
@@ -210,8 +218,15 @@ Function Connect-TooManySecret {
 <#
 .SYNOPSIS
 Connect to Azure and use existing context if available.
+.LINK
+Register-TooManySecret
+Connect-AzAccount
+Set-AzContext
 #>
-    param([switch]$Force)
+    [Cmdletbinding()]
+    param(
+        #Causes the switch to the appropriate context without prompting user.
+        [switch]$Force)
 
     $TenantID = Get-TooManySetting -Name "TenantID"
     $SubID = Get-TooManySetting -Name "SubscriptionID"
@@ -257,10 +272,14 @@ PS> If (Test-TooManyAzure) {
     Write-Host "No Connection to Azure"
 }
 .LINK
-Connect-AzConnect
+Connect-TooManySecret
 #> 
-    param([switch]$DoNotConnect,
+    param(
+        #If flagged, cmdlet will NOT attempt to login if no current context
+        [switch]$DoNotConnect,
+        #Prompt the user for connection if needed
         [switch]$Prompt,
+        #Switch context if existing context is not intended AzureAD/Sub
         [switch]$SwitchContext)
 
     $Result = $False
@@ -286,6 +305,20 @@ Connect-AzConnect
 }
 
 Function Register-TooManySecret() {
+<#
+.DESCRIPTION
+Sets the local settings for the Azure key vault and storage account to use by default as well as the subscription and Azure AD tenant.
+.ExAMPLE
+PS> Register-TooManySecret -VaultName TMSVault -ResourceGroupName TMS-rg -TableName TMSMeta -StorageAccountName mycompsa2314 `
+  -StorageAccountRG Storage-rg -AADTenantID 12345678-abcd-4321-fedc-123456789012 -SubscriptionID 87654321-1234-dcba-4321-cba987654321
+
+This will set it so you will you use the key vault TMSVault in the TMS-rg resource group in the subscription
+87654321-1234-dcba-4321-cba987654321 under Azure AD 12345678-abcd-4321-fedc-123456789012.  Also, all metadata
+will be stored in the table TMSMeta within the storage account mycompsa2314 within the Storage-rg resource
+group of that subscription.
+.LINK
+Connect-TooManySecret
+#>
     [Alias('Register-TooManySecrets')]
     param([parameter(ValueFromPipelineByPropertyName=$true)][string]$VaultName,
         [parameter(ValueFromPipelineByPropertyName=$true)][string]$TableName,
