@@ -11,7 +11,7 @@ This module is also published to PowerShell Gallery and can be installed with th
 
 You can also download this module and copy the folder to either of these two locations:
 * %SystemRoot%\System32\WindowsPowerShell\v1.0\Modules\
-* C:\Users\%Username%\Documents\WindowsPowerShell\Modules\
+* C:\Users\\%Username%\Documents\WindowsPowerShell\Modules\
 
 # Usage
 Once installed, simply import the module to an active PowerShell session:
