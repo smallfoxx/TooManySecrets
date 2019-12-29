@@ -12,7 +12,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.4.1067.0336'
+ModuleVersion = '0.4.1067.0358'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -112,7 +112,7 @@ PrivateData = @{
     PSData = @{
 
         # Tags applied to this module. These help with module discovery in online galleries.
-        Tags = 'Password Manager','Azure','Key Vault','KeyVault','Secrets','Password'
+        Tags = 'PasswordManager','Azure','KeyVault','KeyVault','Secrets','Password'
 
         # A URL to the license for this module.
         LicenseUri = 'https://github.com/smallfoxx/TooManySecrets/blob/master/LICENSE'
