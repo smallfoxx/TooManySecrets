@@ -158,24 +158,3 @@ Function Get-TooManyMetaList() {
     }
 
 }
-
-#region Alias Listings
-$aliases = @{ "Get-TooManyMeta"=@() }
-$aliases += @{ "Set-TooManyMeta"=@() }
-$aliases += @{ "Add-TooManyMeta"=@() }
-$aliases += @{ "Get-TooManyMetaList"=@() }
-
-#region Publish Members
-foreach ($func in $aliases.Keys) {
-    If ($aliases[$func].length -gt 0) {
-        foreach ($alias in ($aliases[$func])) {
-            # If (-not (Get-Command $alias)) { New-Alias -Name $alias -Value $func -PassThru }
-            New-Alias -Name $alias -Value $func -PassThru 
-        }
-        Export-ModuleMember -function $func -alias ($aliases[$func]) 
-    } else {
-        Export-ModuleMember -function $func
-    }
-}
-#endregion
-#endregion

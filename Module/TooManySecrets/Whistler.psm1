@@ -51,6 +51,7 @@ Get-TooManySecret
 Get-AzKeyVaultSecret
 #> 
 [CmdletBinding()]
+[Alias("Get-Password","gpwd")]
 param(#[parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
     [securestring]$Key,
     [switch]$AsPlainText)
@@ -135,6 +136,7 @@ Get-TooManySecret
 Get-AzKeyVaultSecret
 #> 
 [CmdletBinding(DefaultParameterSetname="PlainText")]
+[Alias("Set-Password","spwd")]
 param([parameter(Mandatory=$true)][ValidatePattern("^[0-9a-zA-Z-]+$")][string]$Name,
         [parameter(ParameterSetName="PlainText",Mandatory=$true)][string]$Value,
         [parameter(ParameterSetName="SecureString",Mandatory=$true)][SecureString]$SecureValue,
@@ -174,6 +176,7 @@ param([parameter(Mandatory=$true)][ValidatePattern("^[0-9a-zA-Z-]+$")][string]$N
 }
 
 Function New-TooManyPassword() {
+    [Alias("New-Password","newpwd")]
     param([parameter(ValueFromPipeline=$true,Mandatory=$true)][ValidatePattern("^[0-9a-zA-Z-]+$")][string]$Name,
         [switch]$ReturnPlainText,
         [switch]$DisablePrevious)
@@ -185,6 +188,7 @@ Function New-TooManyPassword() {
 
 Function Get-TooManySecret() {
     [CmdletBinding()]
+    [Alias("Get-Secret")]
     param(
         [parameter(Position=2)]
           [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault), 
@@ -295,6 +299,7 @@ Function Test-TooManySecret {
 }
 
 Function Set-TooManySecret() {
+    [Alias('Set-Secret')]
     param(
         [parameter(ParameterSetName="ByObject",ValueFromPipeline=$true,Mandatory=$true,Position=1)][PSObject]$Secret,
         [parameter(ParameterSetName="ByName",Mandatory=$true,Position=1)][ValidatePattern("^[0-9a-zA-Z-]+$")][string]$Name,
@@ -352,6 +357,7 @@ Process {
 }
 
 Function Update-TooManySecret() {
+    [Alias("Update-Secret")]
     param([parameter(ValueFromPipeline=$true,Mandatory=$true)][Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecret]$Secret)
 
 Process {
@@ -362,6 +368,7 @@ Process {
 
 Function Update-TooManySecretList {
     [CmdletBinding(DefaultParameterSetName='ViaMeta')]
+    [Alias('Update-SecretList')]
     param(
         [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault),
         [parameter(ParameterSetName="ViaMeta")][switch]$IncludeMetadata,
@@ -394,6 +401,7 @@ Process {
 }
 Function Get-TooManySecretList() {
     [CmdletBinding(DefaultParameterSetName='ViaMeta')]
+    [Alias("Get-SecretList")]
     param(
         [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault),
         [parameter(ParameterSetName="ViaMeta")][switch]$IncludeMetadata,
@@ -419,6 +427,7 @@ Process {
 
 Function New-TooManySecret() {
     [CmdletBinding()]
+    [Alias("New-Secret")]
     param(
         [parameter(Mandatory=$true)]
         [ValidatePattern("^[0-9a-zA-Z-]+$")]
@@ -516,6 +525,7 @@ Get-TooManyPassword
 Set-TooManyPassword
 #> 
     [CmdletBinding(DefaultParameterSetname="BySecureString")]
+    [Alias('Convert-Key')]
     Param(
         [parameter(ParameterSetName="ByString",Mandatory=$true,Position=1)][string]$StringKey,
         [parameter(ParameterSetName="ByBytes",Mandatory=$true,Position=1)][byte[]]$ByteKey,
@@ -542,31 +552,3 @@ Set-TooManyPassword
     }
     Return $SecureKey
 }
-
-
-#region Alias Listings
-$aliases = @{ "Get-TooManyPassword"=@("Get-Password","gpwd") }
-$aliases += @{ "Set-TooManyPassword"=@("Set-Password","spwd") }
-$aliases += @{ "New-TooManyPassword"=@("New-Password","newpwd") }
-$aliases += @{ "Get-TooManySecret"=@("Get-Secret") }
-$aliases += @{ "Set-TooManySecret"=@("Set-Secret") }
-$aliases += @{ "New-TooManySecret"=@("New-Secret") }
-$aliases += @{ "Update-TooManySecret"=@("Update-Secret") }
-$aliases += @{ "Convert-TooManyKey"=@("Convert-Key") }
-$aliases += @{ "Get-TooManySecretList"=@("Get-SecretList") }
-$aliases += @{ "Update-TooManySecretList"=@("Update-SecretList") }
-
-#region Publish Members
-foreach ($func in $aliases.Keys) {
-    If ($aliases[$func].length -gt 0) {
-        foreach ($alias in ($aliases[$func])) {
-            # If (-not (Get-Command $alias)) { New-Alias -Name $alias -Value $func -PassThru }
-            New-Alias -Name $alias -Value $func -PassThru 
-        }
-        Export-ModuleMember -Function $func -alias ($aliases[$func]) 
-    } else {
-        Export-ModuleMember -funct $func
-    }
-}
-#endregion
-#endregion
