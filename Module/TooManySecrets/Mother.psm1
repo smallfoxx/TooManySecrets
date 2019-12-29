@@ -116,6 +116,7 @@ Function Select-TooManyKeyVault() {
     .LINK
     Get-AzKeyVault
     #>
+    [Alias('Select-KeyVault')]
     param([parameter(ParameterSetName="ByString",Mandatory=$true,Position=1)][string]$Name,
         [parameter(ParameterSetName="ByObject",Mandatory=$true,Position=1)][ Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault
         )
@@ -204,6 +205,42 @@ Function Test-TooManyTable() {
         $false
     }
 }
+
+Function Connect-TooManySecret {
+<#
+.SYNOPSIS
+Connect to Azure and use existing context if available.
+#>
+    param([switch]$Force)
+
+    $TenantID = Get-TooManySetting -Name "TenantID"
+    $SubID = Get-TooManySetting -Name "SubscriptionID"
+    $Context = Get-AzContext
+
+    If ($Context.Tenant.Id -ne $TenantID -or $Context.Subscription.Id -ne $SubID) {
+        $PossibleConext = Get-AzContext -ListAvailable | Where-Object { $_.Tenant.Id -eq $TenantID }
+        If ($PossibleConext) {
+            If (-not $Force) {
+                Do {
+                    $Response = Read-Host "Existing subscription [$($Context.Subscription.Id)] does not match previous [$SubID]. Switch context? [Y/n]"
+                    If ($Response -eq '') { $Response = 'Y' }
+                } Until ($Response -match "\A(Y(es)?)|(N(o)?)\Z")
+            }
+            If ($Force -or $Response -match '\A(Y(es)?)\Z') {
+                $ExactContext = $PossibleConext | Where-Object { $_.Subscription.Id -eq $SubID} | Select-Object -First 1
+                If ($ExactContext) { 
+                    $Context = $ExactContext | Set-AzContext
+                } else {
+                    $PossibleConext | Select-Object -First 1 | Set-AzContext | Out-Null
+                    $Context = Set-AzContext -Subscription $SubID
+                }
+            }
+        } else {
+            $Context = Connect-AzAccount -Subscription $SubID -Tenant $TenantID
+        }
+    }
+
+}
                     
 Function Test-TooManyAzure() {
 <#
@@ -222,7 +259,9 @@ PS> If (Test-TooManyAzure) {
 .LINK
 Connect-AzConnect
 #> 
-    param([switch]$DoNotConnect)
+    param([switch]$DoNotConnect,
+        [switch]$Prompt,
+        [switch]$SwitchContext)
 
     $Result = $False
     $context = Get-AzContext
@@ -234,6 +273,9 @@ Connect-AzConnect
         $context = Connect-AzAccount -Tenant $TenantID -Subscription $SubID #-Tenant $DefaultTooManyTenantID -Subscription $DefaultTooManySubID
     }
 
+    If ($Prompt -or $SwitchContext) {
+        Connect-TooManySecret -Force:($SwitchContext -or -not $Prompt)
+    }
     If ($context) {
         Set-TooManySetting -Name "TenantID" -Value $Context.Tenant.ToString()
         Set-TooManySetting -Name "SubscriptionID" -Value $Context.Subscription.ToString()
@@ -244,15 +286,16 @@ Connect-AzConnect
 }
 
 Function Register-TooManySecret() {
-    param([string]$VaultName,
-        [string]$TableName,
-        [string]$ResourceGroupName,
-        [string]$StorageAccountName,
-        [string]$StorageAccountRG = $ResourceGroupName,
-        [string]$AADTenantID = $DefaultTooManyTenantID,
-        [string]$SubscriptionID = $DefaultTooManySubID)
+    [Alias('Register-TooManySecrets')]
+    param([parameter(ValueFromPipelineByPropertyName=$true)][string]$VaultName,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$TableName,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$ResourceGroupName,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$StorageAccountName,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$StorageAccountRG = $ResourceGroupName,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$AADTenantID = $DefaultTooManyTenantID,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$SubscriptionID = $DefaultTooManySubID)
 
-    Register-TooManySetting
+    Import-TooManySetting
 
     If ($VaultName) { Set-TooManySetting -Name "KeyVault" -Value $VaultName }
     If ($TableName) { Set-TooManySetting -Name "TMSTable" -Value $TableName }
@@ -263,27 +306,3 @@ Function Register-TooManySecret() {
     If ($SubscriptionID) { Set-TooManySetting -Name "SubscriptionID" -Value $SubscriptionID }
 
 }
-
-#region Alias Listings
-$aliases = @{ "Test-TooManyKeyVault"=@() }
-$aliases += @{ "New-TooManyKeyVault"=@() }
-$aliases += @{ "Get-TooManyKeyVault"=@() }
-$aliases += @{ "Select-TooManyKeyVault"=@("Select-KeyVault") }
-$aliases += @{ "Select-TooManyTable"=@() }
-$aliases += @{ "Test-TooManyTable"=@() }
-$aliases += @{ "Register-TooManySecret" = @("Register-TooManySecrets") }
-
-#region Publish Members
-foreach ($func in $aliases.Keys) {
-    If ($aliases[$func].length -gt 0) {
-        foreach ($alias in ($aliases[$func])) {
-            # If (-not (Get-Command $alias)) { New-Alias -Name $alias -Value $func -PassThru }
-            New-Alias -Name $alias -Value $func -PassThru 
-        }
-        Export-ModuleMember -function $func -alias ($aliases[$func]) 
-    } else {
-        Export-ModuleMember -function $func
-    }
-}
-#endregion
-#endregion

@@ -195,34 +195,3 @@ Function Register-TooManySetting() {
     Import-TooManySetting -SettingsFile $Path
 
 }
-
-
-<#function Get-Variables() {
-    Get-Variable
-}#>
-
-#region Alias Listings
-$aliases = @{ "Get-TooManySetting"=@() }
-$aliases += @{ "Set-TooManySetting"=@() }
-$aliases += @{ "Test-TooManySetting"=@() }
-$aliases += @{ "Register-TooManySetting"=@() }
-$aliases += @{ "Import-TooManySetting"=@() }
-$aliases += @{ "Export-TooManySetting"=@() }
-$aliases += @{ "Select-TooManySettingsTable"=@() }
-$aliases += @{ "Reset-TooManySettings"=@() }
-#$aliases += @{ "Get-Variables"=@() }
-
-#region Publish Members
-foreach ($func in $aliases.Keys) {
-    If ($aliases[$func].length -gt 0) {
-        foreach ($alias in ($aliases[$func])) {
-            # If (-not (Get-Command $alias)) { New-Alias -Name $alias -Value $func -PassThru }
-            New-Alias -Name $alias -Value $func -PassThru 
-        }
-        Export-ModuleMember -function $func -alias ($aliases[$func]) 
-    } else {
-        Export-ModuleMember -function $func
-    }
-}
-#endregion
-#endregion

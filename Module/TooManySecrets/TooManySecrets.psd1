@@ -12,7 +12,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.4.1067.0358'
+ModuleVersion = '0.4.1069.1445'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -79,14 +79,16 @@ NestedModules = @(
                )
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-<# FunctionsToExport = 'Set-TooManySecret', 'Set-TooManySecretyProperty', 
-               'Get-TooManySecret', 'Get-TooManyPassword', 'Update-TooManySecret', 
-               'Convert-SecretToPassword', 'Get-TooManySecretProperty', 
-               'Set-TooManyPassword', 'New-TooManySecret', 'Convert-TooManyKey', 
-               'New-TooManyPassword', 'Get-RandomPassword', 'Get-TooManyKeyVault', 
-               'Test-TooManyKeyVault', 'Test-TooManyAzure', 'Select-TooManyKeyVault', 
-               'New-TooManyKeyVault'
-#>
+FunctionsToExport = 'Test-TooManyKeyVault','New-TooManyKeyVault','Get-TooManyKeyVault','Select-TooManyKeyVault',
+                        'Select-TooManyTable','Test-TooManyTable','Register-TooManySecret','Connect-TooManySecret',
+                        'Get-TooManyMeta','Set-TooManyMeta','Add-TooManyMeta','Get-TooManyMetaList',
+                        'Get-TooManySetting','Set-TooManySetting','Test-TooManySetting','Register-TooManySetting',
+                        'Import-TooManySetting','Export-TooManySetting','Select-TooManySettingsTable',
+                        'Reset-TooManySettings','Get-TooManyPassword','Set-TooManyPassword','New-TooManyPassword',
+                        'Get-TooManySecret','Set-TooManySecret','New-TooManySecret','Update-TooManySecret',
+                        'Convert-TooManyKey','Get-TooManySecretList','Update-TooManySecretList'
+
+
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 # CmdletsToExport = @()
@@ -124,7 +126,7 @@ PrivateData = @{
         # IconUri = ''
 
         # ReleaseNotes of this module
-        ReleaseNotes = 'Performance improvements, corrected new item creation bugs, dynamic field updates, and better meta handling'
+        ReleaseNotes = 'Fix filtering secrets'
 
         # External dependent modules of this module
         # ExternalModuleDependencies = ''
