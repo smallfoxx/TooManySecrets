@@ -3,11 +3,11 @@ Set-Variable -Name "SpecialRowProperties" `
     -Value @("Etag","PartitionKey","RowKey","TableTimestamp") `
     -Option AllScope
 #$SpecialRowProperties = @("Etag","PartitionKey","RowKey","TableTimestamp")
-$CommonParameters = @("Debug","ErrorAction","ErrorVariable","InformationAction","InformationVariable","OutVariable","OutBuffer","PipelineVariable","Verbose","WarningAction","WarningVariable","WhatIf","Confirm","PassThru")
+$CommonParameters = @("Debug","ErrorAction","ErrorVariable","Force","InformationAction","InformationVariable","OutVariable","OutBuffer","PipelineVariable","Verbose","WarningAction","WarningVariable","WhatIf","Confirm","PassThru")
 $ExcludeMetaProperties = $SpecialRowProperties + `
     $CommonParameters + `
-    @("ImportTags","Attributes","ContentType","Created","Enabled","Expires","Id","Name","NotBefore","SecretValue","SecretValueText","Tags","TagsTable","Updated","VaultName","Version")
-
+    @("Secret","Name","Property","SecureValue","DisablePrevious","ImportTags","Attributes","ContentType","Created","Enabled","Expires","Id","NotBefore","SecretValueText","Tags","TagsTable","Updated","VaultName","Version")
+   
 
 Function Get-TooManyMeta() {
 <#
@@ -56,13 +56,13 @@ Function Set-TooManyMeta() {
     AzTable
     #>
     param([parameter(ParameterSetName="ByObject",ValueFromPipeline=$true,Mandatory=$true,Position=1)][PSObject]$InputObject,
-        [parameter(ParameterSetName="ByObject",ValueFromPipeline=$true,Mandatory=$true,Position=1)][switch]$ImportTags,
+        [parameter(ParameterSetName="ByObject",Mandatory=$true,Position=1)][switch]$ImportTags,
         [parameter(ParameterSetName="ByName",Mandatory=$true,Position=1)][string]$Name,
         [hashtable]$Property=@{})
 
 Process {
     $SetProperties = @{}
-    ForEach ($Prop in $Property.Keys) { $SetProperties.$Prop = $Property.$Prop}
+    ForEach ($Prop in ($Property.Keys | Where-Object { $ExcludeMetaProperties -notcontains $_ })) { $SetProperties.$Prop = $Property.$Prop}
 
     If ($InputObject) {
         $Name = $InputObject.Name 
@@ -75,7 +75,7 @@ Process {
             }
         }
 
-        If ($ImportTags) {
+        If ($ImportTags -and $InputObject.Tags) {
             ForEach ($Tag in ($InputObject.Tags.Keys | Where-Object{ -not $SetProperties.ContainsKey( $_ ) } ) ) {
                 $SetProperties.$Tag = $InputObject.Tags.$Tag
             }

@@ -164,8 +164,11 @@ param([parameter(Mandatory=$true)][ValidatePattern("^[0-9a-zA-Z-]+$")][string]$N
                 $SecureEncrypted = ConvertTo-SecureString -String $Encrypted -AsPlainText -Force
                 $SecureValue = $SecureEncrypted
             }
-            If ($script:TMSSecretList.Names -notcontains $Name) { $script:TMSSecretList.Names += $Name }
-            Set-AzKeyVaultSecret -VaultName $KeyVault.VaultName -SecretValue  $SecureValue -Name $Name -NotBefore (Get-Date) | Convert-SecretToPassword -AsPlainText:$AsPlainText
+            $Secret = Set-AzKeyVaultSecret -VaultName $KeyVault.VaultName -SecretValue  $SecureValue -Name $Name -NotBefore (Get-Date)
+            If ($script:TMSSecretList.Names -notcontains $Name) {
+                $script:TMSSecretList.Names += $Name
+            }
+            $Secret | Convert-SecretToPassword -AsPlainText:$AsPlainText
         }
     }    
 }
@@ -311,8 +314,8 @@ Function Set-TooManySecret() {
 Process {
     $SetProperties = @{}
     ForEach ($Prop in $Property.Keys) { $SetProperties.$Prop = $Property.$Prop}
-    
-    ForEach ($ParamName in ($PSCmdlet.MyInvocation.BoundParameters.Keys | Where-Object { @("Secret","Name","Property","SecureValue","DisablePrevious","ImportTags") -notcontains $_ } )) {
+
+    ForEach ($ParamName in $PSCmdlet.MyInvocation.BoundParameters.Keys) {
         $SetProperties.$ParamName = $PSCmdlet.MyInvocation.BoundParameters.$ParamName
     }
 
@@ -334,11 +337,11 @@ Process {
     }
 
     If ($Secret) {
-        $SecretUpdate = $Secret | Update-TooManySecret
-
         If ($SecureValue) {
             Set-TooManyPassword -SecureValue $SecureValue -Name $Name -DisablePrevious:$DisablePrevious | Out-Null
         }
+
+        $SecretUpdate = $Secret | Update-TooManySecret
 
         If ($PassThru) {
             Get-TooManySecret -Name $Name
