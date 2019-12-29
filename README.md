@@ -5,7 +5,7 @@ PowerShell module for managing secrets, passwords, and keys in Azure.
 Someone once asked why worry about managing passwords and secrets as we move to a passwordless system. However, that is almost exactly why it is needed more now than ever. By utilizing a passwordless system to access these secrets, we can focus on ensuring only those legacy systems that don't yet support a passwordless system are stored and protected here. Hopefully we can get to the point were these systems are also being updated and changed at a regular pace to minimize the impact of password hashes. We hope for the day that this becomes completely obsolete and passwords are no longer needed. Until then, we'll deal with TooManySecrets.
 
 # Installation
-This module is also published to PowerShell Gallery and can be installed with the simple command:
+This module is also published to [PowerShell Gallery](https://www.powershellgallery.com/packages/TooManySecrets/) and can be installed with the simple command:
 
 `Install-Module TooManySecrets`
 
