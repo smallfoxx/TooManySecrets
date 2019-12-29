@@ -52,7 +52,7 @@ Get-AzKeyVaultSecret
 #> 
 [CmdletBinding()]
 [Alias("Get-Password","gpwd")]
-param(#[parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
+param(
     [securestring]$Key,
     [switch]$AsPlainText)
     DynamicParam {
@@ -249,44 +249,44 @@ Begin {
 Process {
     switch ($PSCmdlet.ParameterSetName) {
 
-    'Filtered' {
-        If ($RegEx) {
-            $FilteredSecrets = $Secrets | Where-Object { $_.Name -match $Filter }
-        } else {
-            $FilteredSecrets = $Secrets | Where-Object { $_.Name -like $Filter }
-        }
-        ForEach ($Secret in $FilteredSecrets) {
-            $DetailedSecret = $KeyVault | Get-AzKeyVaultSecret -Name $Secret.Name -IncludeVersions:$IncludeVersions
-            If ($ExcludeMetadata) {
-                $DetailedSecret
-            } elseif ($IncludeVersions) {
-                $DetailedSecret | Add-TooManyMeta -Force
-            } else  {
-                #Add-TooManyMeta -Secret $DetailedSecret -Force
-                $DetailedSecret | Add-TooManyMeta -Force
-            }
-        }
-    } 
-    Default {
-        $Name = $PSBoundParameters.Name
-
-        If ($Version -eq "") {
-            $Secret = $KeyVault | Get-AzKeyVaultSecret -Name $Name -IncludeVersions:$IncludeVersions
-        } else {
-            $Secret = $KeyVault | Get-AzKeyVaultSecret -Name $Name -Version $Version
-        }
-
-        If ($ExcludeMetadata) {
-            $Secret 
-        } elseif ($Secret) {
-            if ($IncludeVersions) {
-                $Secret | Add-TooManyMeta -Force 
+        'Filtered' {
+            If ($RegEx) {
+                $FilteredSecrets = $Secrets | Where-Object { $_.Name -match $Filter }
             } else {
-                $Secret | Add-TooManyMeta -Force
+                $FilteredSecrets = $Secrets | Where-Object { $_.Name -like $Filter }
+            }
+            ForEach ($Secret in $FilteredSecrets) {
+                $DetailedSecret = $KeyVault | Get-AzKeyVaultSecret -Name $Secret.Name -IncludeVersions:$IncludeVersions
+                If ($ExcludeMetadata) {
+                    $DetailedSecret
+                } elseif ($IncludeVersions) {
+                    $DetailedSecret | Add-TooManyMeta -Force
+                } else  {
+                    #Add-TooManyMeta -Secret $DetailedSecret -Force
+                    $DetailedSecret | Add-TooManyMeta -Force
+                }
+            }
+        } 
+        Default {
+            $Name = $PSBoundParameters.Name
+
+            If ($Version -eq "") {
+                $Secret = $KeyVault | Get-AzKeyVaultSecret -Name $Name -IncludeVersions:$IncludeVersions
+            } else {
+                $Secret = $KeyVault | Get-AzKeyVaultSecret -Name $Name -Version $Version
+            }
+
+            If ($ExcludeMetadata) {
+                $Secret 
+            } elseif ($Secret) {
+                if ($IncludeVersions) {
+                    $Secret | Add-TooManyMeta -Force 
+                } else {
+                    $Secret | Add-TooManyMeta -Force
+                }
             }
         }
     }
-
 }
 End {
 
