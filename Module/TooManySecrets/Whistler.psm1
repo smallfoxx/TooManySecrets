@@ -65,7 +65,7 @@ param(#[parameter(ValueFromPipeline=$true,Mandatory=$true)][string]$Name,
                 'ValueFromPipelineByPropertyName' = $true
                 'ParameterSetName' = '__AllParameterSets'
                 'Position' = 1
-                'ValidSet' = (Get-TooManySecretList).Name
+                'ValidSet' = (Get-TooManySecretList -UseVault)
             }
         }
         
@@ -164,6 +164,7 @@ param([parameter(Mandatory=$true)][ValidatePattern("^[0-9a-zA-Z-]+$")][string]$N
                 $SecureEncrypted = ConvertTo-SecureString -String $Encrypted -AsPlainText -Force
                 $SecureValue = $SecureEncrypted
             }
+            If ($script:TMSSecretList.Names -notcontains $Name) { $script:TMSSecretList.Names += $Name }
             Set-AzKeyVaultSecret -VaultName $KeyVault.VaultName -SecretValue  $SecureValue -Name $Name -NotBefore (Get-Date) | Convert-SecretToPassword -AsPlainText:$AsPlainText
         }
     }    
@@ -175,6 +176,7 @@ Function New-TooManyPassword() {
         [switch]$DisablePrevious)
 
     Set-TooManyPassword -Name $Name -SecureValue (Get-RandomPassword) -DisablePrevious:$DisablePrevious -AsPlainText:$ReturnPlainText
+
 }
 
 
@@ -200,7 +202,7 @@ Function Get-TooManySecret() {
                 'ValueFromPipelineByPropertyName' = $true
                 'ParameterSetName' = '__AllParameterSets'
                 'Position' = 1
-                'ValidSet' = (Get-TooManySecretList).Name
+                'ValidSet' = (Get-TooManySecretList -UseVault)
             }
         }
         
@@ -229,6 +231,7 @@ Function Get-TooManySecret() {
     }
         
 Begin {
+
     If ($RegEx -or $Like) {
         $Secrets = $KeyVault | Get-AzKeyVaultSecret
     }
@@ -255,11 +258,13 @@ Process {
             }
         }
     } else {
+
         If ($Version -eq "") {
             $Secret = $KeyVault | Get-AzKeyVaultSecret -Name $Name -IncludeVersions:$IncludeVersions
         } else {
             $Secret = $KeyVault | Get-AzKeyVaultSecret -Name $Name -Version $Version
         }
+
         If ($ExcludeMetadata) {
             $Secret 
         } elseif ($Secret) {
@@ -272,7 +277,18 @@ Process {
     }
 
 }
+End {
 
+}
+}
+
+Function Test-TooManySecret {
+    Param(
+        [parameter(Mandatory=$true)]
+        [string]$Name
+    )
+
+    ((Get-TooManySecretList) -contains $name)
 }
 
 Function Set-TooManySecret() {
@@ -289,6 +305,7 @@ Function Set-TooManySecret() {
         [switch]$DisablePrevious,
         [switch]$PassThru,
         [switch]$ImportTags,
+        [switch]$Force,
         [hashtable]$Property=@{}
     )
 Process {
@@ -304,19 +321,28 @@ Process {
         $SetProperties.SecretID = $Secret.Id
         $MetaResult = Set-TooManyMeta -InputObject $Secret -Property $SetProperties -ImportTags:$ImportTags
     } else {
-        $Secret = Get-TooManySecret -Name $Name
-        $SetProperties.SecretID = $Secret.Id
-        $MetaResult = Set-TooManyMeta -Name $Name -Property $SetProperties
+        If (Test-TooManySecret -Name $name) {
+            $Secret = Get-TooManySecret -Name $Name
+        } elseif ($Force) {
+            $Secret = New-TooManySecret -Name $name -SecureValue $SecureValue -PassThru
+        }
+
+        If ($Secret) {
+            $SetProperties.SecretID = $Secret.Id
+            $MetaResult = Set-TooManyMeta -Name $Name -Property $SetProperties
+        }
     }
 
-    $SecretUpdate = $Secret | Update-TooManySecret
+    If ($Secret) {
+        $SecretUpdate = $Secret | Update-TooManySecret
 
-    If ($SecureValue) {
-        Set-TooManyPassword -SecureValue $SecureValue -Name $Name -DisablePrevious:$DisablePrevious
-    }
+        If ($SecureValue) {
+            Set-TooManyPassword -SecureValue $SecureValue -Name $Name -DisablePrevious:$DisablePrevious | Out-Null
+        }
 
-    If ($PassThru) {
-        Get-TooManySecret -Name $Name
+        If ($PassThru) {
+            Get-TooManySecret -Name $Name
+        }
     }
 }
 
@@ -331,18 +357,90 @@ Process {
 
 }
 
-Function Get-TooManySecretList() {
+Function Update-TooManySecretList {
+    [CmdletBinding(DefaultParameterSetName='ViaMeta')]
     param(
         [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault),
-        [switch]$IncludeMetadata
+        [parameter(ParameterSetName="ViaMeta")][switch]$IncludeMetadata,
+        [parameter(ParameterSetName="ViaKeyVault",Mandatory=$true)][switch]$UseVault
+    )
+Process {
+    If (-not $script:TMSSecretList) {
+        $script:TMSSecretList = [PSCustomObject]@{
+            Names = @()
+            Meta = @()
+            LastUpdateTime = (Get-Date)
+        }
+        $script:TMSSecretList | Add-Member ScriptProperty Age { ((Get-Date) - $this.LastUpdateTime).TotalSeconds }
+    }
+    switch ($PSCmdlet.ParameterSetName) {
+        'ViaKeyVault' {
+            If ($UseVault) {
+                $script:TMSSecretList.Names = $KeyVault | Get-AzKeyVaultSecret | ForEach-Object { $_.Name }
+                $script:TMSSecretList.Meta = @()
+                $script:TMSSecretList.LastUpdateTime = (Get-Date)
+            }
+        }
+        Default {
+            $script:TMSSecretList.Meta = Get-TooManyMetaList -IncludeMetadata:$IncludeMetadata
+            $script:TMSSecretList.Names = $script:TMSSecretList.Meta | ForEach-Object { $_.Name }
+            $script:TMSSecretList.LastUpdateTime = (Get-Date)
+        }
+    }
+}
+}
+Function Get-TooManySecretList() {
+    [CmdletBinding(DefaultParameterSetName='ViaMeta')]
+    param(
+        [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault),
+        [parameter(ParameterSetName="ViaMeta")][switch]$IncludeMetadata,
+        [parameter(ParameterSetName="ViaKeyVault",Mandatory=$true)][switch]$UseVault,
+        [int]$MaxAge = 3600
     )
 
-    Get-TooManyMetaList -IncludeMetadata:$IncludeMetadata
+Process {
+    If (-not $Script:TMSSecretList -or ($Script:TMSSecretList.Age -ge $MaxAge)) {
+        switch ($PSCmdlet.ParameterSetName) {
+            'ViaKeyVault' { Update-TooManySecretList -KeyVault $KeyVault -UseVault:$UseVault }
+            Default { Update-TooManySecretList -KeyVault $KeyVault -IncludeMetadata:$IncludeMetadata }
+        }
+    }
+    If ($IncludeMetadata) {
+        $Script:TMSSecretList.Meta
+    } else {
+        $Script:TMSSecretList.Names
+    }
+}
 
 }
 
 Function New-TooManySecret() {
+    [CmdletBinding()]
+    param(
+        [parameter(Mandatory=$true)]
+        [ValidatePattern("^[0-9a-zA-Z-]+$")]
+        [string]$Name,
+        [SecureString]$SecureValue,
+        [SecureString]$Key,
+        [switch]$PassThru
+    )
+Process {
+    try {
+        $ExistingSecret = Get-TooManySecret -Name $Name 
+    } catch {
 
+    }
+    If ($ExistingSecret) {
+        Write-Warning "Secret named [$Name] already exists."
+    } else {
+        If ($SecureValue) {
+            Set-TooManyPassword -Name $Name -SecureValue $SecureValue -Key $Key | Out-Null
+        } else {
+            New-TooManyPassword -Name $Name | Out-Null
+        }
+        If ($PassThru) { Get-TooManySecret -Name $Name }
+    }
+}
 }
 
 Function Get-TooManySecretProperty() {
@@ -449,9 +547,11 @@ $aliases += @{ "Set-TooManyPassword"=@("Set-Password","spwd") }
 $aliases += @{ "New-TooManyPassword"=@("New-Password","newpwd") }
 $aliases += @{ "Get-TooManySecret"=@("Get-Secret") }
 $aliases += @{ "Set-TooManySecret"=@("Set-Secret") }
+$aliases += @{ "New-TooManySecret"=@("New-Secret") }
 $aliases += @{ "Update-TooManySecret"=@("Update-Secret") }
 $aliases += @{ "Convert-TooManyKey"=@("Convert-Key") }
 $aliases += @{ "Get-TooManySecretList"=@("Get-SecretList") }
+$aliases += @{ "Update-TooManySecretList"=@("Update-SecretList") }
 
 #region Publish Members
 foreach ($func in $aliases.Keys) {
