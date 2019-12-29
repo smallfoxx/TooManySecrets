@@ -187,14 +187,16 @@ Function New-TooManyPassword() {
 
 
 Function Get-TooManySecret() {
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName="Filtered")]
     [Alias("Get-Secret")]
     param(
         [parameter(Position=2)]
           [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault = (Get-TooManyKeyVault), 
-        [string]$Version,
-        [switch]$RegEx,
-        [switch]$Like,
+        [parameter(Position=1,ParameterSetName="Filtered",ValueFromPipelineByPropertyName=$True)]
+          [string]$Filter='*',
+        [parameter(Position=3,ParameterSetName="Named",ValueFromPipelineByPropertyName=$True)][string]$Version,
+        [parameter(ParameterSetName="Filtered")][switch]$RegEx,
+        [parameter(ParameterSetName="Filtered")][switch]$Like=(-not $RegEx),
         [switch]$ExcludeMetadata,
         [switch]$IncludeVersions
     )
@@ -207,7 +209,7 @@ Function Get-TooManySecret() {
                 'Mandatory' = $true
                 'ValueFromPipeline' = $true
                 'ValueFromPipelineByPropertyName' = $true
-                'ParameterSetName' = '__AllParameterSets'
+                'ParameterSetName' = 'Named'
                 'Position' = 1
                 'ValidSet' = (Get-TooManySecretList -UseVault)
             }
@@ -245,13 +247,13 @@ Begin {
 }
 
 Process {
-    $Name = $PSBoundParameters.Name
+    switch ($PSCmdlet.ParameterSetName) {
 
-    If ($RegEx -or $Like) {
+    'Filtered' {
         If ($RegEx) {
-            $FilteredSecrets = $Secrets | Where-Object { $_.Name -match $name }
+            $FilteredSecrets = $Secrets | Where-Object { $_.Name -match $Filter }
         } else {
-            $FilteredSecrets = $Secrets | Where-Object { $_.Name -like $name }
+            $FilteredSecrets = $Secrets | Where-Object { $_.Name -like $Filter }
         }
         ForEach ($Secret in $FilteredSecrets) {
             $DetailedSecret = $KeyVault | Get-AzKeyVaultSecret -Name $Secret.Name -IncludeVersions:$IncludeVersions
@@ -264,7 +266,9 @@ Process {
                 $DetailedSecret | Add-TooManyMeta -Force
             }
         }
-    } else {
+    } 
+    Default {
+        $Name = $PSBoundParameters.Name
 
         If ($Version -eq "") {
             $Secret = $KeyVault | Get-AzKeyVaultSecret -Name $Name -IncludeVersions:$IncludeVersions
@@ -276,7 +280,7 @@ Process {
             $Secret 
         } elseif ($Secret) {
             if ($IncludeVersions) {
-                $Secret | Add-TooManyMeta -Force
+                $Secret | Add-TooManyMeta -Force 
             } else {
                 $Secret | Add-TooManyMeta -Force
             }

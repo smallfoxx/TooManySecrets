@@ -12,7 +12,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.4.1068.0517'
+ModuleVersion = '0.4.1069.1445'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -126,7 +126,7 @@ PrivateData = @{
         # IconUri = ''
 
         # ReleaseNotes of this module
-        ReleaseNotes = 'Performance improvements, corrected new item creation bugs, dynamic field updates, and better meta handling'
+        ReleaseNotes = 'Fix filtering secrets'
 
         # External dependent modules of this module
         # ExternalModuleDependencies = ''
