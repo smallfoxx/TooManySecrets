@@ -1,3 +1,57 @@
+Class TMSSecret {
+    hidden [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecret] $_VaultSecret
+    hidden [System.Security.SecureString] $_Password
+
+    hidden [void] Initialize() {
+        $this | Add-Member ScriptProperty SecretValue {
+                If ($this._Password) {
+                    return $this._Password
+                } else {
+                    return $this._VaultSecret.SecretValue
+                }
+            } {
+                $this._Password = $Value
+            }
+    }
+
+    TMSSecret([Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecret]$AzureSecret) {
+        $this._VaultSecret = $AzureSecret
+        $this.Initialize()
+    }
+    TMSSecret([System.Security.SecureString]$Password) {
+        $this._Password = $Password
+        $this.Initialize()
+    }
+
+    [void] Update() {
+        $this | Uupdate-TooManySecret
+    }
+
+    [void] CopySecretToClipboard() {
+        $this.CopySecretToClipboard(-1)
+    }
+    [void] CopySecretToClipboard([int] $Timer) {
+        [System.Runtime.InteropServices.Marshal]::PtrToStringAuto( [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($This.SecretValue) ) | Set-Clipboard
+
+        If ($Timer -gt 0) {
+            $Start = Get-Date
+            Do {
+                $CurrentDuration = ((Get-Date)-$Start).TotalSeconds
+                Write-Progress -Activity 'Waiting to clear clipboard' `
+                    -Status ("Elapsed [{0:#,##0}] second(s)" -f $CurrentDuration) `
+                    -SecondsRemaining ($Timer-$CurrentDuration) `
+                    -PercentComplete (100*$CurrentDuration/$Timer) 
+                Start-Sleep -Seconds 1
+            } Until ((Get-Date) -gt $Start.AddSeconds($Timer))
+
+            If ((Get-Clipboard) -eq `
+                ([System.Runtime.InteropServices.Marshal]::PtrToStringAuto( [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($This.SecretValue) ))) { 
+                    1..(Get-Random -Minimum 3 -Maximum 10) | ForEach-Object { Get-RandomPassword -AsPlainText | Set-Clipboard }
+                    $null | Set-Clipboard 
+            }
+        }
+    }
+}
 
 function Verb-Noun {
 <#

@@ -482,8 +482,9 @@ Function Get-RandomPassword() {
     }
 
     If ($AsPlainText) {
-        $Length = Get-Random -Minimum $MinLength -Maximum $MaxLength+1
+        [int]$Length = Get-Random -Minimum $MinLength -Maximum ($MaxLength+1)
         $LastChar = ""
+        Write-Debug "Length [$length]"
         ( 1..$Length | ForEach-Object {
             do { 
                 $ThisChar = Get-Random -InputObject $charSet -Count 1
