@@ -50,18 +50,175 @@ Get-AzKeyVault
     }
 }
 
+
+Function Install-TooManySecret {
+<#
+.SYNOPSIS
+Create Azure resources for storage
+.DESCRIPTION
+Makes calls to Azure Resource Manager to create a new key vault in the current Azure subscription
+#>
+[Cmdletbinding()]
+param(
+    [parameter(ValueFromPipelineByPropertyName=$true)]
+    [Alias('VaultName')]
+    #The name of the Key Vault to use in Azure
+    [string]$KeyVault,
+
+    [parameter(ValueFromPipelineByPropertyName=$true)]
+    [Alias('RG')]
+    #Name of the Resource Group to store resources in
+    [string]$ResourceGroupName,
+
+    [parameter(ValueFromPipelineByPropertyName=$true)]
+    #Name of the storage account to keep the table for metadata in
+    [string]$StorageAccountName,
+
+    [parameter(ValueFromPipelineByPropertyName=$true)]
+    #Resource group where storage account is kept
+    [string]$StorageAccountResourceGroup,
+
+    [parameter(ValueFromPipelineByPropertyName=$true)]
+    [Alias('TableName','TMSTable')]
+    #Table within the storage account to store metadata
+    [string]$Table,
+
+    [parameter(ValueFromPipelineByPropertyName=$true)]
+    [Alias('Region','AzureRegion')]
+    #Azure region to store Azure resources in
+    [string]$Location
+)
+
+Process {
+    ForEach ($ParamName in @('KeyVault','ResourceGroupName','StorageAccountName','StorageAccountResourceGroup','Table','Location')) {
+        If ([string]((Get-Variable -name $ParamName -ErrorAction Ignore).Value) -eq '') { Set-Variable -Name $ParamName -Value (Get-TooManySetting -name $ParamName) }
+    }
+
+    If ($KeyVault -eq '') { $KeyVault="TMSVault" }
+    If ($ResourceGroupName -eq '') { $ResourceGroupName="$KeyVault-rg" }
+    If ($StorageAccountName -eq '') { $StorageAccountName= ("{0}{1:0000000}" -f $KeyVault,(Get-Random -Minimum 0 -Maximum 10000000)).ToLower() }
+    If ($StorageAccountResourceGroup -eq '') { $StorageAccountResourceGroup=$ResourceGroupName }
+    If ($Table -eq '') { $Table=$KeyVault }
+    If ($Location -eq '') { $Location = 'westus' }
+
+    New-TooManyTable -Name $Table -StorageAccountName $StorageAccountName -ResourceGroupName $StorageAccountResourceGroup -Location $Location
+    New-TooManyKeyVault -Name $KeyVault -ResourceGroupName $ResourceGroupName -Location $Location
+}
+
+}    
 Function New-TooManyKeyVault() {
 <#
 .SYNOPSIS
 Create a new key vault
 .DESCRIPTION
-NOT CURRENT IMPLEMENTED!!!! Makes calls to Azure Resource Manager to create a new key vault in the current Azure subscription
+Makes calls to Azure Resource Manager to create a new key vault in the current Azure subscription
 .PARAMETER Name
 Name to give this Key Vault
 #>
+[Cmdletbinding()]
+param(
+    [parameter(Mandatory=$true,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+    [Alias('KeyVault')]
+    [string]$Name,
+
+    [parameter(ValueFromPipelineByPropertyName=$true)]
+    [Alias('RG')]
+    [string]$ResourceGroupName,
+
+    [parameter(ValueFromPipelineByPropertyName=$true)]
+    [Alias('Region','AzureRegion')]
+    [string]$Location
+)
+
+Process {
+    If (-not $TMSSettings) { Import-TooManySetting }
+
+    If (Test-TooManyAzure -SwitchContext) {
+        $KeyVault = Get-AzKeyVault -VaultName $Name -ResourceGroupName $ResourceGroupName -ErrorAction Ignore
+        If (-not $KeyVault) {
+            try {
+                $RG = Get-AzResourceGroup -Name $ResourceGroupName
+            } catch {
+                If (-not $RG) { $RG = New-AzResourceGroup -Name $ResourceGroupName -Location $Location }
+            }
+            $KeyVault = New-AzKeyVault -Name $Name -ResourceGroupName $RG.ResourceGroupName -Location $Location
+        }
+        Set-TooManySetting -Name "KeyVault" -Value $KeyVault.VaultName
+        Set-TooManySetting -Name "Location" -Value $KeyVault.Location
+
+        return $KeyVault
+    }
 }
 
-Function Get-TooManyKeyVault() {
+
+}
+
+Function New-TooManyTable() {
+<#
+.SYNOPSIS
+Create a table for metadata
+.DESCRIPTION
+Makes calls to Azure Resource Manager to create a new table in a storage account in the current Azure subscription
+.PARAMETER Name
+Name to give this Key Vault
+#>
+[Cmdletbinding()]
+param(
+    [parameter(Mandatory=$true,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+    [Alias('TableName','Table')]
+    [string]$Name,
+
+    [parameter(ValueFromPipelineByPropertyName=$true)]
+    [Alias('RG')]
+    [string]$ResourceGroupName,
+
+    [parameter(ValueFromPipelineByPropertyName=$true)]
+    [string]$StorageAccountName,
+
+    [parameter(ValueFromPipelineByPropertyName=$true)]
+    [Alias('Region','AzureRegion')]
+    [string]$Location
+)
+
+Process {
+    If (-not $TMSSettings) { Import-TooManySetting }
+
+    If (Test-TooManyAzure -SwitchContext) {
+        try {
+            $ResourceGroup = Get-AzResourceGroup -Name $ResourceGroupName 
+        } catch {
+            $ResourceGroup = New-AzResourceGroup -Name $ResourceGroupName -Location $Location
+        }
+
+        try {
+            $StorageAccount = Get-AzStorageAccount -Name $StorageAccountName -ResourceGroupName $ResourceGroup.ResourceGroupName
+        } catch {
+            If (-not $Location) { $Location = $ResourceGroup.Location }
+            $StorageAccount = New-AzStorageAccount -Name $StorageAccountName -ResourceGroupName $ResourceGroup.ResourceGroupName `
+                -Location $Location -SkuName Standard_LRS -Kind StorageV2 -AccessTier Hot
+        }
+
+        ForEach ($TableName in @($Name,"TMSSettings")) {
+            try {
+                $Table = Get-AzStorageTable -Name $TableName -Context $StorageAccount.Context
+            } catch {
+                $Table = New-AzStorageTable -Name $TableName -Context $StorageAccount.Context
+            }
+        }
+
+        Set-TooManySetting -Name "Table" -Value $Table.Name
+        Set-TooManySetting -Name "StorageAccountRG" -Value $StorageAccount.ResourceGroupName
+        Set-TooManySetting -Name "StorageAccountName" -Value $StorageAccount.StorageAccountName
+        Set-TooManySetting -Name "Location" -Value $Location
+
+        return $KeyVault
+    }
+}
+
+
+}
+    
+    Function Get-TooManyKeyVault() {
     <#
     .SYNOPSIS
     Retrieve an Azure Key Vault
@@ -118,7 +275,7 @@ Function Select-TooManyKeyVault() {
     #>
     [Alias('Select-KeyVault')]
     param([parameter(ParameterSetName="ByString",Mandatory=$true,Position=1)][string]$Name,
-        [parameter(ParameterSetName="ByObject",Mandatory=$true,Position=1)][ Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault
+        [parameter(ParameterSetName="ByObject",Mandatory=$true,Position=1)][Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault
         )
         If ($KeyVault) {
             $TMSKeyVault = $KeyVault
@@ -323,6 +480,7 @@ Connect-TooManySecret
     param([parameter(ValueFromPipelineByPropertyName=$true)][string]$VaultName,
         [parameter(ValueFromPipelineByPropertyName=$true)][string]$TableName,
         [parameter(ValueFromPipelineByPropertyName=$true)][string]$ResourceGroupName,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$Location,
         [parameter(ValueFromPipelineByPropertyName=$true)][string]$StorageAccountName,
         [parameter(ValueFromPipelineByPropertyName=$true)][string]$StorageAccountRG = $ResourceGroupName,
         [parameter(ValueFromPipelineByPropertyName=$true)][string]$AADTenantID = $DefaultTooManyTenantID,
@@ -331,8 +489,9 @@ Connect-TooManySecret
     Import-TooManySetting
 
     If ($VaultName) { Set-TooManySetting -Name "KeyVault" -Value $VaultName }
-    If ($TableName) { Set-TooManySetting -Name "TMSTable" -Value $TableName }
+    If ($TableName) { Set-TooManySetting -Name "Table" -Value $TableName }
     If ($ResourceGroupName) { Set-TooManySetting -Name "ResourceGroupName" -Value $ResourceGroupName }
+    If ($Location) { Set-TooManySetting -Name "Location" -Value $Location }
     If ($StorageAccountName) { Set-TooManySetting -Name "StorageAccountName" -Value $StorageAccountName }
     If ($StorageAccountRG) { Set-TooManySetting -Name "StorageAccountRG" -Value $StorageAccountRG }
     If ($AADTenantID) { Set-TooManySetting -Name "TenantID" -Value $AADTenantID }

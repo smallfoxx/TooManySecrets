@@ -12,7 +12,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.4.1069.1745'
+ModuleVersion = '0.4.2001.1315'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -86,7 +86,7 @@ FunctionsToExport = 'Test-TooManyKeyVault','New-TooManyKeyVault','Get-TooManyKey
                         'Import-TooManySetting','Export-TooManySetting','Select-TooManySettingsTable',
                         'Reset-TooManySettings','Get-TooManyPassword','Set-TooManyPassword','New-TooManyPassword',
                         'Get-TooManySecret','Set-TooManySecret','New-TooManySecret','Update-TooManySecret',
-                        'Convert-TooManyKey','Get-TooManySecretList','Update-TooManySecretList'
+                        'Convert-TooManyKey','Get-TooManySecretList','Update-TooManySecretList','Install-TooManySecret'
 
 
 
@@ -126,7 +126,7 @@ PrivateData = @{
         # IconUri = ''
 
         # ReleaseNotes of this module
-        ReleaseNotes = 'Fix filtering secrets'
+        ReleaseNotes = 'Enabled ability to create Azure resources via install command'
 
         # External dependent modules of this module
         # ExternalModuleDependencies = ''
