@@ -75,8 +75,9 @@ param(
     [string]$StorageAccountName,
 
     [parameter(ValueFromPipelineByPropertyName=$true)]
+    [Alias('StorageAccountResourceGroup')]
     #Resource group where storage account is kept
-    [string]$StorageAccountResourceGroup,
+    [string]$StorageAccountRG,
 
     [parameter(ValueFromPipelineByPropertyName=$true)]
     [Alias('TableName','TMSTable')]
@@ -86,26 +87,47 @@ param(
     [parameter(ValueFromPipelineByPropertyName=$true)]
     [Alias('Region','AzureRegion')]
     #Azure region to store Azure resources in
-    [string]$Location
+    [string]$Location,
+
+    #return the created object(s)
+    [switch]$PassThru
 )
 
 Process {
-    ForEach ($ParamName in @('KeyVault','ResourceGroupName','StorageAccountName','StorageAccountResourceGroup','Table','Location')) {
-        If ([string]((Get-Variable -name $ParamName -ErrorAction Ignore).Value) -eq '') { Set-Variable -Name $ParamName -Value (Get-TooManySetting -name $ParamName) }
+    ForEach ($ParamName in @('KeyVault','ResourceGroupName','StorageAccountName','StorageAccountRG','Table','Location')) {
+        If ([string]((Get-Variable -name $ParamName -ErrorAction Ignore).Value) -eq '') { 
+            write-Debug "Setting [$ParamName] to [$(Get-TooManySetting -name $ParamName)]"
+            Set-Variable -Name $ParamName -Value (Get-TooManySetting -name $ParamName) }
     }
 
-    If ($KeyVault -eq '') { $KeyVault="TMSVault" }
-    If ($ResourceGroupName -eq '') { $ResourceGroupName="$KeyVault-rg" }
+    If ($KeyVault -eq '') { $KeyVault="TMSVault{0:00000}" -f (Get-Random -Minimum 0 -Maximum 100000) }
+    If ($ResourceGroupName -eq '') { $ResourceGroupName="TMS-rg" }
     If ($StorageAccountName -eq '') { $StorageAccountName= ("{0}{1:0000000}" -f $KeyVault,(Get-Random -Minimum 0 -Maximum 10000000)).ToLower() }
-    If ($StorageAccountResourceGroup -eq '') { $StorageAccountResourceGroup=$ResourceGroupName }
+    If ($StorageAccountRG -eq '') { $StorageAccountRG=$ResourceGroupName }
     If ($Table -eq '') { $Table=$KeyVault }
     If ($Location -eq '') { $Location = 'westus' }
 
-    New-TooManyTable -Name $Table -StorageAccountName $StorageAccountName -ResourceGroupName $StorageAccountResourceGroup -Location $Location
-    New-TooManyKeyVault -Name $KeyVault -ResourceGroupName $ResourceGroupName -Location $Location
+    New-TooManyTable -Name $Table -StorageAccountName $StorageAccountName -ResourceGroupName $StorageAccountRG -Location $Location -PassThru:$PassThru
+    New-TooManyKeyVault -Name $KeyVault -ResourceGroupName $ResourceGroupName -Location $Location -PassThru:$PassThru
 }
 
 }    
+
+Function Add-UserToAccessKeyVault {
+    param(
+        [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVault]$KeyVault,
+        [string]$UserPrincipalName = ((Get-AzContext).Account.Id),
+        [switch]$AllPermissions
+    )
+
+    $Permissions = @('Get','List','Set')
+    If ($AllPermissions) {
+        $Permissions += @('Delete','Backup','Restore','Recover','Purge')
+    }
+    Write-Debug "Adding [$UserPrincipalName to [$($KeyVault.VaultName)] with [$($Permissions -join ';')] permissions" 
+    Set-AzKeyVaultAccessPolicy -InputObject $KeyVault -UserPrincipalName $UserPrincipalName -PermissionsToSecrets $Permissions
+}
+
 Function New-TooManyKeyVault() {
 <#
 .SYNOPSIS
@@ -127,7 +149,10 @@ param(
 
     [parameter(ValueFromPipelineByPropertyName=$true)]
     [Alias('Region','AzureRegion')]
-    [string]$Location
+    [string]$Location,
+
+    #return the created object(s)
+    [switch]$PassThru
 )
 
 Process {
@@ -137,16 +162,20 @@ Process {
         $KeyVault = Get-AzKeyVault -VaultName $Name -ResourceGroupName $ResourceGroupName -ErrorAction Ignore
         If (-not $KeyVault) {
             try {
-                $RG = Get-AzResourceGroup -Name $ResourceGroupName
+                $RG = Get-AzResourceGroup -Name $ResourceGroupName -ErrorAction Stop
             } catch {
                 If (-not $RG) { $RG = New-AzResourceGroup -Name $ResourceGroupName -Location $Location }
             }
             $KeyVault = New-AzKeyVault -Name $Name -ResourceGroupName $RG.ResourceGroupName -Location $Location
+            Add-UserToAccessKeyVault -KeyVault $KeyVault -AllPermissions
         }
-        Set-TooManySetting -Name "KeyVault" -Value $KeyVault.VaultName
-        Set-TooManySetting -Name "Location" -Value $KeyVault.Location
+        If ($KeyVault) {
+            Set-TooManySetting -Name "KeyVault" -Value $KeyVault.VaultName
+            Set-TooManySetting -Name "ResourceGroupName" -Value $KeyVault.ResourceGroupName
+            Set-TooManySetting -Name "Location" -Value $KeyVault.Location
 
-        return $KeyVault
+            If ($PassThru) { return $KeyVault }
+        }
     }
 }
 
@@ -177,7 +206,10 @@ param(
 
     [parameter(ValueFromPipelineByPropertyName=$true)]
     [Alias('Region','AzureRegion')]
-    [string]$Location
+    [string]$Location,
+
+    #return the created object(s)
+    [switch]$PassThru
 )
 
 Process {
@@ -185,13 +217,14 @@ Process {
 
     If (Test-TooManyAzure -SwitchContext) {
         try {
-            $ResourceGroup = Get-AzResourceGroup -Name $ResourceGroupName 
+            Write-Debug "Looking for [$ResourceGroupName]"
+            $ResourceGroup = Get-AzResourceGroup -Name $ResourceGroupName -ErrorAction Stop
         } catch {
             $ResourceGroup = New-AzResourceGroup -Name $ResourceGroupName -Location $Location
         }
 
         try {
-            $StorageAccount = Get-AzStorageAccount -Name $StorageAccountName -ResourceGroupName $ResourceGroup.ResourceGroupName
+            $StorageAccount = Get-AzStorageAccount -Name $StorageAccountName -ResourceGroupName $ResourceGroup.ResourceGroupName -ErrorAction Stop
         } catch {
             If (-not $Location) { $Location = $ResourceGroup.Location }
             $StorageAccount = New-AzStorageAccount -Name $StorageAccountName -ResourceGroupName $ResourceGroup.ResourceGroupName `
@@ -200,7 +233,7 @@ Process {
 
         ForEach ($TableName in @($Name,"TMSSettings")) {
             try {
-                $Table = Get-AzStorageTable -Name $TableName -Context $StorageAccount.Context
+                $Table = Get-AzStorageTable -Name $TableName -Context $StorageAccount.Context -ErrorAction Stop
             } catch {
                 $Table = New-AzStorageTable -Name $TableName -Context $StorageAccount.Context
             }
@@ -211,26 +244,26 @@ Process {
         Set-TooManySetting -Name "StorageAccountName" -Value $StorageAccount.StorageAccountName
         Set-TooManySetting -Name "Location" -Value $Location
 
-        return $KeyVault
+        if ($PassThru) { return $Table }
     }
 }
 
 
 }
     
-    Function Get-TooManyKeyVault() {
-    <#
-    .SYNOPSIS
-    Retrieve an Azure Key Vault
-    .DESCRIPTION
-    Find the first key vault in the current subscription with the give name.
-    .PARAMETER Name
-    Name given to the Key Vault
-    .EXAMPLE
-    PS> $MyVaut = Get-TooManyKeyVault -Name "MyVault"
-    #>
-    param([string]$Name,
-        [switch]$Refresh)
+Function Get-TooManyKeyVault() {
+<#
+.SYNOPSIS
+Retrieve an Azure Key Vault
+.DESCRIPTION
+Find the first key vault in the current subscription with the give name.
+.PARAMETER Name
+Name given to the Key Vault
+.EXAMPLE
+PS> $MyVaut = Get-TooManyKeyVault -Name "MyVault"
+#>
+param([string]$Name,
+    [switch]$Refresh)
 
     if (-not $Refresh -and (($TMSKeyVault -and (-not $name -or ($TMSKeyVault.Name -eq $name))))) {
         $TMSKeyVault

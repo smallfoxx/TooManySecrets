@@ -12,7 +12,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.4.2001.1315'
+ModuleVersion = '0.4.2001.1549'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -126,7 +126,7 @@ PrivateData = @{
         # IconUri = ''
 
         # ReleaseNotes of this module
-        ReleaseNotes = 'Enabled ability to create Azure resources via install command'
+        ReleaseNotes = 'Fixed errors in installing and deploying resources to Azure'
 
         # External dependent modules of this module
         # ExternalModuleDependencies = ''

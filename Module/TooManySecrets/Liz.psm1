@@ -56,7 +56,7 @@ Function Reset-TooManySettings() {
         [switch]$Save)
 
     If ($TMSSettings) {
-        write-host "Resetting..."
+        Write-Information "Resetting TooManySecrets settings..."
     
         If ($Save) {
             Export-TooManySetting
@@ -148,6 +148,7 @@ Function Set-TooManySetting() {
     If ($TMSSettings) {
         If (-not ($DoNotOverwrite -and $TMSSettings.$Name)) {
             $TMSSettings | Add-Member NoteProperty $Name $Value -Force
+            Write-Debug "Wanting [$name] set as [$value] and ended up with [$($TMSSettings.$name)]"
             Export-TooManySetting
         }
     }
