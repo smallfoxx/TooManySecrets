@@ -57,7 +57,19 @@ Function Install-TooManySecret {
 Create Azure resources for storage
 .DESCRIPTION
 Makes calls to Azure Resource Manager to create a new key vault in the current Azure subscription
+.EXAMPLE
+PS> Install-TooManySecret -VaultName TMSVault13671 -ResourceGroupName TMS-rg -TableName TMSMeta`
+      -StorageAccountName mycompsa2314 -StorageAccountRG Storage-rg
+
+If none of these resources exist in Azure, this will create the key vault TMSVault13671 in the TMS-rg
+resource group. Also, the storage account mycompsa2314 will be created within the Storage-rg resource
+group. The table TMSMeta will be created with the the storage account mycompsa2314 and all metadata will
+be stored here. If any of these resources already exist, no changes will be made to those resources, but
+TooManySecrets will be configured to use them.
+.LINK
+Register-TooManySecret
 #>
+[Alias('Install-TooManySecrets')]
 [Cmdletbinding()]
 param(
     [parameter(ValueFromPipelineByPropertyName=$true)]
