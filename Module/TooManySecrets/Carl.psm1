@@ -1,8 +1,9 @@
 
+
 Set-Variable -Name "SpecialRowProperties" `
     -Value @("Etag","PartitionKey","RowKey","TableTimestamp") `
     -Option AllScope
-#$SpecialRowProperties = @("Etag","PartitionKey","RowKey","TableTimestamp")
+
 $CommonParameters = @("Debug","ErrorAction","ErrorVariable","Force","InformationAction","InformationVariable","OutVariable","OutBuffer","PipelineVariable","Verbose","WarningAction","WarningVariable","WhatIf","Confirm","PassThru")
 $ExcludeMetaProperties = $SpecialRowProperties + `
     $CommonParameters + `
@@ -96,8 +97,11 @@ Process {
 function Add-TooManyMeta () {
     param(
         [parameter(ParameterSetName="ByIdentityItem",ValueFromPipeline=$true,Mandatory=$true,Position=1)]
-        [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecretIdentityItem]
+        #[Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecretIdentityItem]
         $InputObject,
+        #[parameter(ParameterSetName="ByTMSSecret",ValueFromPipeline=$true,Mandatory=$true,Position=1)]
+        #[TMSSecret]
+        #$Secret,
         [switch]$Force
         )
 
@@ -109,8 +113,8 @@ Begin {
     }
 }
 Process {
-    switch ($InputObject.GetType().Name) {
-        "PSKeyVaultSecret" {
+    switch -Regex ($InputObject.GetType().Name) {
+        "(PSKeyVaultSecret)|(TMSSecret)" {
             Write-Debug "By secret: $($InputObject.GetType())"
             $Metadata = Get-TooManyMeta -Name $InputObject.Name
             If ($Metadata) {

@@ -1,3 +1,4 @@
+
 Set-Variable -Name "RegPath" `
     -Value "HKCU:\Software\TooManySecrets" `
     -Option ReadOnly `

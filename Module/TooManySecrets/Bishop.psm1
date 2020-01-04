@@ -1,58 +1,69 @@
-Class TMSSecret {
-    hidden [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecret] $_VaultSecret
-    hidden [System.Security.SecureString] $_Password
+class TMSSecret {
+    hidden [Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecret] $_AzSecret
+    hidden [string[]]$IncludeProperties = @('SecretID','URL','Username','Created', `
+        'Enabled','Expires','Id','Name','NotBefore','SecretValue','Updated', `
+        'VaultName','Version')
 
-    hidden [void] Initialize() {
-        $this | Add-Member ScriptProperty SecretValue {
-                If ($this._Password) {
-                    return $this._Password
-                } else {
-                    return $this._VaultSecret.SecretValue
-                }
-            } {
-                $this._Password = $Value
-            }
+    [string]$Name
+    [SecureString]$SecretValue
+
+    TMSSecret() {
     }
 
-    TMSSecret([Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecret]$AzureSecret) {
-        $this._VaultSecret = $AzureSecret
-        $this.Initialize()
-    }
-    TMSSecret([System.Security.SecureString]$Password) {
-        $this._Password = $Password
-        $this.Initialize()
+    TMSSecret([Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecret]$Secret) {
+        $this._AzSecret = $Secret
+        $this.UpdateFromSecret($Secret)
     }
 
-    [void] Update() {
-        $this | Uupdate-TooManySecret
+    hidden [void] UpdateFromSecret() {
+        If ($this._AzSecret) {
+            $this.UpdateFromSecret($this._AzSecret)
+        }
     }
 
-    [void] CopySecretToClipboard() {
-        $this.CopySecretToClipboard(-1)
-    }
-    [void] CopySecretToClipboard([int] $Timer) {
-        [System.Runtime.InteropServices.Marshal]::PtrToStringAuto( [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($This.SecretValue) ) | Set-Clipboard
-
-        If ($Timer -gt 0) {
-            $Start = Get-Date
-            Do {
-                $CurrentDuration = ((Get-Date)-$Start).TotalSeconds
-                Write-Progress -Activity 'Waiting to clear clipboard' `
-                    -Status ("Elapsed [{0:#,##0}] second(s)" -f $CurrentDuration) `
-                    -SecondsRemaining ($Timer-$CurrentDuration) `
-                    -PercentComplete (100*$CurrentDuration/$Timer) 
-                Start-Sleep -Seconds 1
-            } Until ((Get-Date) -gt $Start.AddSeconds($Timer))
-
-            If ((Get-Clipboard) -eq `
-                ([System.Runtime.InteropServices.Marshal]::PtrToStringAuto( [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($This.SecretValue) ))) { 
-                    1..(Get-Random -Minimum 3 -Maximum 10) | ForEach-Object { Get-RandomPassword -AsPlainText | Set-Clipboard }
-                    $null | Set-Clipboard 
+    hidden [void] UpdateFromSecret([Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecret]$Secret) {
+        $Properties = $Secret | get-Member -type *propert* | Where-Object { $this.IncludeProperties -contains $_.name}
+        ForEach ($Prop in $Properties) {
+            Write-Debug "Populating [$($Prop.name)] property"
+            if ($null -ne $Secret.($Prop.Name)) {
+                $this.AddProp($Prop.Name,$Secret.($Prop.Name))
             }
         }
     }
+
+    [void] CopyToClipboard() {
+        $this.CopyToClipboard(-1)
+    }
+
+    [void] CopyToClipboard([int]$timer=-1) {
+        $this.CopyToClipboard($timer,10)
+    }
+
+    [void] CopyToClipboard([int]$timer=-1,[int]$MaxClear=10) {
+        ([System.Runtime.InteropServices.Marshal]::PtrToStringAuto( `
+            [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($this.SecretValue) `
+        )) | Set-Clipboard
+        If ($timer -gt 0) {
+            $wait = 0
+            Do {
+                Write-Progress -Activity "Copied secret [$($this.name)] to clipboard." -status "Will clear clipboard in [$($timer-$wait)] seconds" -PercentComplete (100*$wait/$timer)
+                Start-Sleep -Seconds 1
+                $wait++
+            } Until ($wait -gt $timer)
+            1..(Get-Random -minimum 3 -Maximum $MaxClear) | ForEach-Object { (1..(Get-Random -minimum 8 -Maximum 64) | ForEach-Object { [char](Get-Random -Minimum 32 -Maximum 127)} ) -join '' | Set-Clipboard }
+            ' ' | Set-Clipboard
+        }
+    }
+
+    [void] AddProp([string]$Name, $Value) {
+        $this | Add-Member -Force NoteProperty $Name $Value
+    }
 }
 
+
+
+ 
+<#
 function Verb-Noun {
 <#
 .SYNOPSIS
@@ -74,7 +85,7 @@ Description of what this example does
 .LINK
 External link #1
 External link #2
-#>
+#
     [CmdletBinding(DefaultParameterSetName="ParamSet1")]
     param (
         [parameter(ValueFromPipeline=$true,Mandatory=$true,ParameterSetName="ParamSet1",Position=1)][type1]$Param1,
@@ -115,3 +126,4 @@ foreach ($func in $aliases.Keys) {
 #endregion
 #endregion
 
+#>

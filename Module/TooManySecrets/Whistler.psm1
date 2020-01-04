@@ -1,8 +1,11 @@
-Set-Variable -Name "DefaultCharSet" `
+Set-Variable -Name "DefaultCharSet" -Force `
     -Value "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23465789#%&'()*+,-./[\]^_{}~" `
     -Option ReadOnly `
-    -Visibility Private 
- 
+    -Visibility Private #`
+    #-Scope 0 
+
+
+
 Function Convert-SecretToPassword() {
     <#
     .SYNOPSIS
@@ -167,7 +170,7 @@ param([parameter(Mandatory=$true)][ValidatePattern("^[0-9a-zA-Z-]+$")][string]$N
                 $SecureValue = $SecureEncrypted
             }
             $Secret = Set-AzKeyVaultSecret -VaultName $KeyVault.VaultName -SecretValue  $SecureValue -Name $Name -NotBefore (Get-Date)
-            If ($script:TMSSecretList.Names -notcontains $Name) {
+            If ($script:TMSSecretList -and $script:TMSSecretList.Names -notcontains $Name) {
                 $script:TMSSecretList.Names += $Name
             }
             $Secret | Convert-SecretToPassword -AsPlainText:$AsPlainText
@@ -241,7 +244,9 @@ Function Get-TooManySecret() {
         
 Begin {
 
-    If ($RegEx -or $Like) {
+    If ($PSCmdlet.ParameterSetName -eq 'Filtered') {
+        #write-output (Get-AzContext)
+        #Write-output (Get-TooManyKeyVault)
         $Secrets = $KeyVault | Get-AzKeyVaultSecret
     }
 }
@@ -277,12 +282,12 @@ Process {
             }
 
             If ($ExcludeMetadata) {
-                $Secret 
+                New-Object TMSSecret($Secret)
             } elseif ($Secret) {
                 if ($IncludeVersions) {
-                    $Secret | Add-TooManyMeta -Force 
+                    (New-Object TMSSecret($Secret)) | Add-TooManyMeta -Force
                 } else {
-                    $Secret | Add-TooManyMeta -Force
+                    (New-Object TMSSecret($Secret)) | Add-TooManyMeta -Force
                 }
             }
         }
@@ -337,6 +342,8 @@ Process {
             $Secret = Get-TooManySecret -Name $Name
         } elseif ($Force) {
             $Secret = New-TooManySecret -Name $name -SecureValue $SecureValue -PassThru
+        } else {
+            Write-Warning "Secret [$Name] does not exists. Use -Force to force creation of a new secret."
         }
 
         If ($Secret) {
@@ -441,12 +448,8 @@ Function New-TooManySecret() {
         [switch]$PassThru
     )
 Process {
-    try {
-        $ExistingSecret = Get-TooManySecret -Name $Name 
-    } catch {
 
-    }
-    If ($ExistingSecret) {
+    If (Test-TooManySecret -Name $Name) {
         Write-Warning "Secret named [$Name] already exists."
     } else {
         If ($SecureValue) {

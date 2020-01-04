@@ -16,6 +16,7 @@ ModuleVersion = '0.4.1069.1745'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
+CompatiblePSEditions = @("Core","Desk")
 
 # ID used to uniquely identify this module
 GUID = '426237eb-1a68-4db9-a10c-b8206698c3d3'
@@ -72,11 +73,11 @@ RequiredModules = @(@{ModuleName = 'Az.Accounts'; GUID = '17a2feff-488b-47f9-872
 
 # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
 NestedModules = @(
-                 'Whistler.psm1', #main module for calls with passwords and secrets
-                 'Mother.psm1',  #communicating with the KeyVault directly
-                 'Liz.psm1', #managing the module and its settings
-                 'Carl.psm1', #working with the meta data and details
-                 'Bishop.psm1' #classes, variables, and strings
+                'Bishop.psm1',
+                'Whistler.psm1', #main module for calls with passwords and secrets
+                'Mother.psm1',  #working with the KeyVault directly
+                'Liz.psm1', #managing the module and its settings
+                'Carl.psm1' #working with the meta data and details
                )
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
@@ -107,7 +108,7 @@ FunctionsToExport = 'Test-TooManyKeyVault','New-TooManyKeyVault','Get-TooManyKey
 # ModuleList = @()
 
 # List of all files packaged with this module
-# FileList = @()
+FileList = @('TooManySecrets.json')
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
 PrivateData = @{
@@ -142,5 +143,7 @@ HelpInfoURI = 'https://github.com/smallfoxx/TooManySecrets'
 # Default prefix for commands exported from this module. Override the default prefix using Import-Module -Prefix.
 # DefaultCommandPrefix = ''
 
+
 }
+
 
