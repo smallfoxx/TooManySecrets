@@ -12,10 +12,9 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.4.1069.1745'
+ModuleVersion = '0.4.1204.1752'
 
 # Supported PSEditions
-# CompatiblePSEditions = @()
 CompatiblePSEditions = @("Core","Desk")
 
 # ID used to uniquely identify this module
@@ -128,7 +127,7 @@ PrivateData = @{
         # IconUri = ''
 
         # ReleaseNotes of this module
-        ReleaseNotes = 'Fix filtering secrets'
+        ReleaseNotes = 'Implementing custom class TMSSecret'
 
         # External dependent modules of this module
         # ExternalModuleDependencies = ''
