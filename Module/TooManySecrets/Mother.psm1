@@ -1,11 +1,14 @@
+$ClassModule = "Bishop.psm1"
+if (Test-Path "$PSScriptRoot\$ClassModule") {
+    #this is to get the class definitions shared between modules
+    $script = [ScriptBlock]::Create("using module '$PSScriptRoot\$ClassModule'")
+    . $script
+}
+
+$GlobalPresets = New-Object TMSPresets
+
+
 ##region Variables
-Set-Variable -Name "DefaultSMFXSubID" `
--Value "" `
--Option AllScope
- 
-Set-Variable -Name "DefaultSMFXTenantID" `
--Value "" `
--Option AllScope
 
 Set-Variable -Name "TMSKeyVault" `
     -Value $null `

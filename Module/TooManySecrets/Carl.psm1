@@ -1,14 +1,18 @@
+$ClassModule = "Bishop.psm1"
+if (Test-Path "$PSScriptRoot\$ClassModule") {
+    #this is to get the class definitions shared between modules
+    $script = [ScriptBlock]::Create("using module '$PSScriptRoot\$ClassModule'")
+    . $script
+}
 
-
-Set-Variable -Name "SpecialRowProperties" `
-    -Value @("Etag","PartitionKey","RowKey","TableTimestamp") `
-    -Option AllScope
+$GlobalPresets = New-Object TMSPresets
+<#$SpecialRowProperties = @("Etag","PartitionKey","RowKey","TableTimestamp") 
 
 $CommonParameters = @("Debug","ErrorAction","ErrorVariable","Force","InformationAction","InformationVariable","OutVariable","OutBuffer","PipelineVariable","Verbose","WarningAction","WarningVariable","WhatIf","Confirm","PassThru")
 $ExcludeMetaProperties = $SpecialRowProperties + `
     $CommonParameters + `
     @("Secret","Name","Property","SecureValue","DisablePrevious","ImportTags","Attributes","ContentType","Created","Enabled","Expires","Id","NotBefore","SecretValueText","Tags","TagsTable","Updated","VaultName","Version")
-   
+#>   
 
 Function Get-TooManyMeta() {
 <#
@@ -32,7 +36,7 @@ Get-AzKeyVault
         Write-Debug "Using table [$($TMSTable.Name)]..."
         $row = Get-AzTableRow -Table $TMSTable -PartitionKey "Secrets" -RowKey $Name
         If ($Row) {
-            return ($row | Select-Object * -ExcludeProperty $SpecialRowProperties)
+            return ($row | Select-Object * -ExcludeProperty $GlobalPresets.SpecialRowProperties)
         } else {
             return $null
         }
@@ -63,11 +67,11 @@ Function Set-TooManyMeta() {
 
 Process {
     $SetProperties = @{}
-    ForEach ($Prop in ($Property.Keys | Where-Object { $ExcludeMetaProperties -notcontains $_ })) { $SetProperties.$Prop = $Property.$Prop}
+    ForEach ($Prop in ($Property.Keys | Where-Object { $GlobalPresets.ExcludeMetaProperties -notcontains $_ })) { $SetProperties.$Prop = $Property.$Prop}
 
     If ($InputObject) {
         $Name = $InputObject.Name 
-        $PropNames = $InputObject | Get-Member -MemberType *Property | Where-Object { $ExcludeMetaProperties -notcontains $_.Name } | ForEach-Object { $_.name }
+        $PropNames = $InputObject | Get-Member -MemberType *Property | Where-Object { $GlobalPresets.ExcludeMetaProperties -notcontains $_.Name } | ForEach-Object { $_.name }
 
         $SetProperties.SecretID = $InputObject.ID
         ForEach ($PropName in $PropNames) {
@@ -119,7 +123,7 @@ Process {
             $Metadata = Get-TooManyMeta -Name $InputObject.Name
             If ($Metadata) {
                 Write-Debug ("existing props: [{0}]" -f (($InputObject | Get-member -MemberType *Propert* | %{ $_.name }) -join ",")) 
-                $Properties = $Metadata | Get-Member -MemberType *Propert* | Where-Object { $SpecialRowProperties -notcontains $_.name }
+                $Properties = $Metadata | Get-Member -MemberType *Propert* | Where-Object { $GlobalPresets.SpecialRowProperties -notcontains $_.name }
                 ForEach ($Property in $Properties) {
                     Write-Debug "Adding member [$($Property.Name)]" #-ForegroundColor Yellow
                     $InputObject | Add-Member -MemberType $Property.MemberType -Name $Property.Name -Value ($Metadata.($Property.Name)) -Force:$Force
@@ -151,7 +155,7 @@ Function Get-TooManyMetaList() {
         If ($allRows) {
             ForEach ($row in $allRows) { $row | Add-Member NoteProperty Name $row.RowKey -ErrorAction SilentlyContinue }
             If ($IncludeMetadata) {
-                return ($allRows | Select-Object * -ExcludeProperty $SpecialRowProperties)
+                return ($allRows | Select-Object * -ExcludeProperty $GlobalPresets.SpecialRowProperties)
             } else {
                 return ($allRows | Select-Object Name)
             }

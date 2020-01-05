@@ -70,3 +70,4 @@ class TMSSecret {
         $this | Add-Member NoteProperty $Name $Value
     }
 }
+

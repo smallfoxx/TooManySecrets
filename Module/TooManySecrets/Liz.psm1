@@ -1,4 +1,13 @@
+$ClassModule = "Bishop.psm1"
+if (Test-Path "$PSScriptRoot\$ClassModule") {
+    #this is to get the class definitions shared between modules
+    $script = [ScriptBlock]::Create("using module '$PSScriptRoot\$ClassModule'")
+    . $script
+}
 
+$GlobalPresets = New-Object TMSPresets
+
+<#
 Set-Variable -Name "RegPath" `
     -Value "HKCU:\Software\TooManySecrets" `
     -Option ReadOnly `
@@ -9,7 +18,7 @@ Set-Variable -Name "TMSSettingsTable" `
     -Option AllScope
     
 $ExcludeSettingProperties = @("SettingsFile")
-
+#>
 
 Function Get-ModuleName() {
 
@@ -89,9 +98,9 @@ Function Import-TooManySetting() {
         Set-Variable -Name "TMSSettings" -Value $Settings -Scope Global -Visibility Private
         Update-ModuleDetails
         If ($TMSSettings.SettingsTableName) {
-            If (-not $TMSSettingsTable) { Select-TooManySettingsTable }
-            If ($TMSSettingsTable) {
-                $SettingsRow = Get-AzTableRow -Table $TMSTable -PartitionKey "Secrets" -RowKey "TMSSettings" | Select-Object * -ExcludeProperty $SpecialRowProperties
+            If (-not $GlobalPresets.TMSSettingsTable) { Select-TooManySettingsTable }
+            If ($GlobalPresets.TMSSettingsTable) {
+                $SettingsRow = Get-AzTableRow -Table $TMSTable -PartitionKey "Secrets" -RowKey "TMSSettings" | Select-Object * -ExcludeProperty $GlobalPresets.SpecialRowProperties
                 ForEach ($Column in ($SettingsRow | Get-Member -MemberType *Property)) {
                     Set-TooManySetting -Name $Column.Name -Value $SettingsRow.($ColumnName) -DoNotOverwrite:(-not $UpdateFromTable)
                 }
@@ -106,13 +115,13 @@ Function Export-TooManySetting() {
 
     #Write-Debug "Using settings file [$SettingsFile]..."
     If ($SettingsFile -ne (Get-TooManySetting -Name SettingsFile)) { $TMSSettings.SettingsFile = $SettingsFile }
-    $SettingsToExport = ($TMSSettings | Select-Object * -ExcludeProperty $ExcludeSettingProperties)
+    $SettingsToExport = ($TMSSettings | Select-Object * -ExcludeProperty $GlobalPresets.ExcludeSettingProperties)
     $SettingsHash = @{}
     ForEach ($SettingProperty in ($SettingsToExport | Get-Member -MemberType *Property )) {
         $SettingsHash.($SettingProperty.Name) = $TMSSettings.($SettingProperty.Name)
     }
-    If ($TMSSettingsTable) {
-        Add-AzTableRow -Table $TMSSettingsTable -PartitionKey "Secrets" -RowKey "TMSSettings" `
+    If ($GlobalPresets.TMSSettingsTable) {
+        Add-AzTableRow -Table $GlobalPresets.TMSSettingsTable -PartitionKey "Secrets" -RowKey "TMSSettings" `
             -UpdateExisting -property $SettingsHash | Out-Null
     }
     $JSONSettings = ConvertTo-Json $SettingsToExport 
@@ -168,8 +177,8 @@ Function Select-TooManySettingsTable() {
                     -Name $StorageAccountName
             }
             If ($SettingsStorage) {
-                $TMSSettingsTable = (Get-AzStorageTable -Name $TableName -Context $SettingsStorage.Context -ErrorAction SilentlyContinue).CloudTable
-                If ($TMSSettingsTable) {
+                $GlobalPresets.TMSSettingsTable = (Get-AzStorageTable -Name $TableName -Context $SettingsStorage.Context -ErrorAction SilentlyContinue).CloudTable
+                If ($GlobalPresets.TMSSettingsTable) {
                     Set-TooManySetting -Name "StorageAccountName" -Value $StorageAccountName -DoNotOverwrite
                     Set-TooManySetting -Name "StorageAccountRG" -Value $StorageAccountRG -DoNotOverwrite
                     Set-TooManySetting -Name "SettingsTableName" -Value $TableName

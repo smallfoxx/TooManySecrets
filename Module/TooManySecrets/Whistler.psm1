@@ -1,10 +1,18 @@
+$ClassModule = "Bishop.psm1"
+if (Test-Path "$PSScriptRoot\$ClassModule") {
+    #this is to get the class definitions shared between modules
+    $script = [ScriptBlock]::Create("using module '$PSScriptRoot\$ClassModule'")
+    . $script
+}
+
+$GlobalPresets = New-Object TMSPresets
+
+<#
 Set-Variable -Name "DefaultCharSet" -Force `
     -Value "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23465789#%&'()*+,-./[\]^_{}~" `
     -Option ReadOnly `
     -Visibility Private #`
-    #-Scope 0 
-
-
+#>
 
 Function Convert-SecretToPassword() {
     <#
@@ -471,7 +479,7 @@ Function Set-TooManySecretyProperty() {
 }
 
 Function Get-RandomPassword() {
-    param([char[]]$CharSet=$DefaultCharSet,
+    param([char[]]$CharSet=$GlobalPresets.DefaultCharSet,
         [int]$MinLength=15,
         [int]$MaxLength=30,
         [switch]$AsPlainText,
