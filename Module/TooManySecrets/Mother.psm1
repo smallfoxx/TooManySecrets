@@ -5,24 +5,7 @@ if (Test-Path "$PSScriptRoot\$ClassModule") {
     . $script
 }
 
-$GlobalPresets = New-Object TMSPresets
-
-
-##region Variables
-
-Set-Variable -Name "TMSKeyVault" `
-    -Value $null `
-    -Option AllScope
-
-Set-Variable -Name "TMSStorage" `
-    -Value $null `
-    -Option AllScope
-
-Set-Variable -Name "TMSTable" `
-    -Value $null `
-    -Scope Global -Visibility Public
-
-#endregion
+$ModuleSettings = New-Object TMSModuleSettings
 
 <# TODO:
     * serch all keyvaults
@@ -78,13 +61,13 @@ Function Get-TooManyKeyVault() {
     param([string]$Name,
         [switch]$Refresh)
 
-    if (-not $Refresh -and (($TMSKeyVault -and (-not $name -or ($TMSKeyVault.Name -eq $name))))) {
-        $TMSKeyVault
+    if (-not $Refresh -and (($ModuleSettings.KeyVault -and (-not $name -or ($ModuleSettings.KeyVault.Name -eq $name))))) {
+        $ModuleSettings.KeyVault
     } else {
         If (Test-TooManyAzure) {
-            If ($TMSKeyVault -and (($TMSKeyVault.VaultName -eq $Name) -xor (-not $Name))) {
-                Write-Debug "Using existing vault [$($TMSKeyVault.VaultName)]..."
-                $KeyVault = $TMSKeyVault
+            If ($ModuleSettings.KeyVault -and (($ModuleSettings.KeyVault.VaultName -eq $Name) -xor (-not $Name))) {
+                Write-Debug "Using existing vault [$($ModuleSettings.KeyVault.VaultName)]..."
+                $KeyVault = $ModuleSettings.KeyVault
             } elseif (-not $Name -and (Test-TooManySetting -Name "KeyVault")) {
                 $Name = Get-TooManySetting -Name "KeyVault"
                 $KeyVault = Get-AzKeyVault -VaultName $Name
@@ -96,8 +79,8 @@ Function Get-TooManyKeyVault() {
                 Write-Debug "Got new vault [$($KeyVault.VaultName)]..."
             }
 
-            If (-not $TMSKeyVault) {
-                $TMSKeyVault = $KeyVault
+            If (-not $ModuleSettings.KeyVault) {
+                $ModuleSettings.KeyVault = $KeyVault
             }
 
             $KeyVault
@@ -124,20 +107,20 @@ Function Select-TooManyKeyVault() {
         [parameter(ParameterSetName="ByObject",Mandatory=$true,Position=1)][ Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultIdentityItem]$KeyVault
         )
         If ($KeyVault) {
-            $TMSKeyVault = $KeyVault
+            $ModuleSettings.KeyVault = $KeyVault
         } elseif (Test-TooManyAzure) {
-            If ($TMSKeyVault -and (($TMSKeyVault.VaultName -eq $Name) -xor (-not $Name))) {
-                Write-Debug "Using existing vault [$($TMSKeyVault.VaultName)]..."
+            If ($ModuleSettings.KeyVault -and (($ModuleSettings.KeyVault.VaultName -eq $Name) -xor (-not $Name))) {
+                Write-Debug "Using existing vault [$($ModuleSettings.KeyVault.VaultName)]..."
             } else {
                 $KeyVault = Get-AzKeyVault | Where-Object { $_.VaultName -match $Name } | Select-Object -First 1
-                $TMSKeyVault = $KeyVault
-                Write-Debug "Got new vault [$($TMSKeyVault.VaultName)]..."
+                $ModuleSettings.KeyVault = $KeyVault
+                Write-Debug "Got new vault [$($ModuleSettings.KeyVault.VaultName)]..."
             }
 
         }
     
-        Set-TooManySetting -Name "KeyVault" -Value $TMSKeyVault.VaultName
-        Return $TMSKeyVault
+        Set-TooManySetting -Name "KeyVault" -Value $ModuleSettings.KeyVault.VaultName
+        Return $ModuleSettings.KeyVault
     }
 
 Function Select-TooManyTable() {
@@ -160,41 +143,41 @@ Function Select-TooManyTable() {
         [Microsoft.Azure.Commands.Management.Storage.Models.PSStorageAccount]$StorageAccount
         )
         If ($Table) {
-            $TMSTable = $Table
+            $ModuleSettings.Table = $Table
         } elseif (Test-TooManyAzure) {
-            If ($TMSTable -and (($TMSTable.Name -eq $Name) -xor (-not $Name))) {
-                Write-Debug "Using existing table [$($TMSTable.Name)]..."
+            If ($ModuleSettings.Table -and (($ModuleSettings.Table.Name -eq $Name) -xor (-not $Name))) {
+                Write-Debug "Using existing table [$($ModuleSettings.Table.Name)]..."
             } else {
                 If ($StorageAccount) {
-                    $TMSStorage = $StorageAccount
-                } elseif ($TMSStorage) {
+                    $ModuleSettings.Storage = $StorageAccount
+                } elseif ($ModuleSettings.Storage) {
                 } elseif (Test-TooManySetting -Name "StorageAccountName") {
-                    $TMSStorage = Get-AzStorageAccount -ResourceGroupName (Get-TooManySetting -Name "StorageAccountRG") `
+                    $ModuleSettings.Storage = Get-AzStorageAccount -ResourceGroupName (Get-TooManySetting -Name "StorageAccountRG") `
                         -Name (Get-TooManySetting -Name "StorageAccountName")
                 } else {
-                    $TMSStorage = Get-AzStorageAccount | Where-Object{ $_.StorageAccountName -match "tmsmeta" }
+                    $ModuleSettings.Storage = Get-AzStorageAccount | Where-Object{ $_.StorageAccountName -match "tmsmeta" }
                 }
-                If ($TMSStorage) {
-                    Set-TooManySetting -Name "StorageAccountRG" -Value $TMSStorage.ResourceGroupName
-                    Set-TooManySetting -Name "StorageAccountName" -Value $TMSStorage.StorageAccountName
+                If ($ModuleSettings.Storage) {
+                    Set-TooManySetting -Name "StorageAccountRG" -Value $ModuleSettings.Storage.ResourceGroupName
+                    Set-TooManySetting -Name "StorageAccountName" -Value $ModuleSettings.Storage.StorageAccountName
                     If (-not $Name) { $Name = Get-TooManySetting -Name KeyVault }
-                    write-Debug "TMSStorage: $($TMSStorage.StorageAccountName) - $($TMSStorage.Context.Gettype())"
+                    write-Debug "TMSStorage: $($ModuleSettings.Storage.StorageAccountName) - $($ModuleSettings.Storage.Context.Gettype())"
                     write-Debug "Name: $Name - $($Name.GetType())"
                     
-                    $Table = (Get-AzStorageTable -Name $Name -Context $TMSStorage.Context).CloudTable
+                    $Table = (Get-AzStorageTable -Name $Name -Context $ModuleSettings.Storage.Context).CloudTable
                     If ($Table) {
-                        Set-Variable -Name "TMSTable" -Value $Table -Scope Global -Visibility Private
-                        Write-Debug "Using found table [$($TMSTable.Name)]" 
+                        $ModuleSettings.Table = $Table
+                        Write-Debug "Using found table [$($ModuleSettings.Table.Name)]" 
                     }
                 }
-                Write-Debug "Got new table [$($TMSTable.Name)]..."
+                Write-Debug "Got new table [$($ModuleSettings.Table.Name)]..."
             }
 
         }
 
-        If ($TMSTable) {
-            Set-TooManySetting -Name "Table" -Value $TMSTable.Name
-            Return $TMSTable
+        If ($ModuleSettings.Table) {
+            Set-TooManySetting -Name "Table" -Value $ModuleSettings.Table.Name
+            Return $ModuleSettings.Table
         }
     
     }
@@ -208,7 +191,7 @@ Function Test-TooManyTable() {
     #>
     param()
 
-    If ($TMSTable) {
+    If ($ModuleSettings.Table) {
         $true
     } elseif (Select-TooManyTable) {
         $true

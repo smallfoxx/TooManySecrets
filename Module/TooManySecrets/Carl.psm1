@@ -5,14 +5,7 @@ if (Test-Path "$PSScriptRoot\$ClassModule") {
     . $script
 }
 
-$GlobalPresets = New-Object TMSPresets
-<#$SpecialRowProperties = @("Etag","PartitionKey","RowKey","TableTimestamp") 
-
-$CommonParameters = @("Debug","ErrorAction","ErrorVariable","Force","InformationAction","InformationVariable","OutVariable","OutBuffer","PipelineVariable","Verbose","WarningAction","WarningVariable","WhatIf","Confirm","PassThru")
-$ExcludeMetaProperties = $SpecialRowProperties + `
-    $CommonParameters + `
-    @("Secret","Name","Property","SecureValue","DisablePrevious","ImportTags","Attributes","ContentType","Created","Enabled","Expires","Id","NotBefore","SecretValueText","Tags","TagsTable","Updated","VaultName","Version")
-#>   
+$ModuleSettings = New-Object TMSModuleSettings
 
 Function Get-TooManyMeta() {
 <#
@@ -33,10 +26,10 @@ Get-AzKeyVault
     param([string]$Name)
 
     If (Test-TooManyTable) {
-        Write-Debug "Using table [$($TMSTable.Name)]..."
-        $row = Get-AzTableRow -Table $TMSTable -PartitionKey "Secrets" -RowKey $Name
+        Write-Debug "Using table [$($ModuleSettings.Table.Name)]..."
+        $row = Get-AzTableRow -Table $ModuleSettings.Table -PartitionKey "Secrets" -RowKey $Name
         If ($Row) {
-            return ($row | Select-Object * -ExcludeProperty $GlobalPresets.SpecialRowProperties)
+            return ($row | Select-Object * -ExcludeProperty $ModuleSettings.SpecialRowProperties)
         } else {
             return $null
         }
@@ -67,11 +60,11 @@ Function Set-TooManyMeta() {
 
 Process {
     $SetProperties = @{}
-    ForEach ($Prop in ($Property.Keys | Where-Object { $GlobalPresets.ExcludeMetaProperties -notcontains $_ })) { $SetProperties.$Prop = $Property.$Prop}
+    ForEach ($Prop in ($Property.Keys | Where-Object { $ModuleSettings.ExcludeMetaProperties -notcontains $_ })) { $SetProperties.$Prop = $Property.$Prop}
 
     If ($InputObject) {
         $Name = $InputObject.Name 
-        $PropNames = $InputObject | Get-Member -MemberType *Property | Where-Object { $GlobalPresets.ExcludeMetaProperties -notcontains $_.Name } | ForEach-Object { $_.name }
+        $PropNames = $InputObject | Get-Member -MemberType *Property | Where-Object { $ModuleSettings.ExcludeMetaProperties -notcontains $_.Name } | ForEach-Object { $_.name }
 
         $SetProperties.SecretID = $InputObject.ID
         ForEach ($PropName in $PropNames) {
@@ -88,7 +81,7 @@ Process {
     }
 
     write-Debug "Meta for [$Name]"
-    $addResult = Add-AzTableRow -Table $TMSTable -PartitionKey "Secrets" -RowKey $Name -UpdateExisting -Property $SetProperties
+    $addResult = Add-AzTableRow -Table $ModuleSettings.Table -PartitionKey "Secrets" -RowKey $Name -UpdateExisting -Property $SetProperties
     If ($addResult) {
         If ($addResult.HttpStatusCode -lt 400 -and $addResult.HttpStatusCode -ge 200) {
             return $addResult.Result.Properties 
@@ -123,7 +116,7 @@ Process {
             $Metadata = Get-TooManyMeta -Name $InputObject.Name
             If ($Metadata) {
                 Write-Debug ("existing props: [{0}]" -f (($InputObject | Get-member -MemberType *Propert* | %{ $_.name }) -join ",")) 
-                $Properties = $Metadata | Get-Member -MemberType *Propert* | Where-Object { $GlobalPresets.SpecialRowProperties -notcontains $_.name }
+                $Properties = $Metadata | Get-Member -MemberType *Propert* | Where-Object { $ModuleSettings.SpecialRowProperties -notcontains $_.name }
                 ForEach ($Property in $Properties) {
                     Write-Debug "Adding member [$($Property.Name)]" #-ForegroundColor Yellow
                     $InputObject | Add-Member -MemberType $Property.MemberType -Name $Property.Name -Value ($Metadata.($Property.Name)) -Force:$Force
@@ -150,12 +143,12 @@ Function Get-TooManyMetaList() {
     )
 
     If (Test-TooManyTable) {
-        Write-Debug "Using table [$($TMSTable.Name)]..."
-        $allRows = Get-AzTableRow -Table $TMSTable -PartitionKey "Secrets" | Sort-Object -Property RowKey 
+        Write-Debug "Using table [$($ModuleSettings.Table.Name)]..."
+        $allRows = Get-AzTableRow -Table $ModuleSettings.Table -PartitionKey "Secrets" | Sort-Object -Property RowKey 
         If ($allRows) {
             ForEach ($row in $allRows) { $row | Add-Member NoteProperty Name $row.RowKey -ErrorAction SilentlyContinue }
             If ($IncludeMetadata) {
-                return ($allRows | Select-Object * -ExcludeProperty $GlobalPresets.SpecialRowProperties)
+                return ($allRows | Select-Object * -ExcludeProperty $ModuleSettings.SpecialRowProperties)
             } else {
                 return ($allRows | Select-Object Name)
             }

@@ -12,7 +12,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.4.1237.1014'
+ModuleVersion = '0.5.0037.1415'
 
 # Supported PSEditions
 CompatiblePSEditions = @("Core","Desk")
@@ -33,7 +33,7 @@ Copyright = '© 2019 SmallFoxx. All rights reserved.'
 Description = 'This module is useful for storing and retrieving passwords and secrets in Azure Key Vaults.  This allows for passwords and secrets to be shared among users via Azure AD authentication and policies with the relatively inexpensive Azure Key Vault resource. While communications are always encrypted and stored securely when working with the Azure Key Vault, further security can be utilized to independantly encrypting the passwords before they are transmitted to Azure. This is module and companion nested modules are published under the Apache License 2.0 and available via GitHub @ https://github.com/smallfoxx/TooManySecrets/'
 
 # Minimum version of the Windows PowerShell engine required by this module
-PowerShellVersion = '4.0'
+PowerShellVersion = '5.0'
 
 # Name of the Windows PowerShell host required by this module
 # PowerShellHostName = ''
@@ -72,7 +72,7 @@ RequiredModules = @(@{ModuleName = 'Az.Accounts'; GUID = '17a2feff-488b-47f9-872
 
 # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
 NestedModules = @(
-                'Bishop.psm1',
+                'Bishop.psm1', #custom classes and shared variables
                 'Whistler.psm1', #main module for calls with passwords and secrets
                 'Mother.psm1',  #working with the KeyVault directly
                 'Liz.psm1', #managing the module and its settings
@@ -127,7 +127,7 @@ PrivateData = @{
         # IconUri = ''
 
         # ReleaseNotes of this module
-        ReleaseNotes = 'Migrated to global preset class for all modules'
+        ReleaseNotes = 'Implemented custom class and cross nested variables. '
 
         # External dependent modules of this module
         # ExternalModuleDependencies = ''
@@ -137,7 +137,7 @@ PrivateData = @{
  } # End of PrivateData hashtable
 
 # HelpInfo URI of this module
-HelpInfoURI = 'https://github.com/smallfoxx/TooManySecrets'
+HelpInfoURI = 'https://github.com/smallfoxx/TooManySecrets/wiki'
 
 # Default prefix for commands exported from this module. Override the default prefix using Import-Module -Prefix.
 # DefaultCommandPrefix = ''

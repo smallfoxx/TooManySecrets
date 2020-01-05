@@ -1,11 +1,15 @@
 
-#region Classes
-class TMSPresets {
-    TMSPresets() {
-        $this.Initialize()
-    }
+$script:TMSKeyVault = $null
+$script:TMSStorage = $null
+$script:TMSTable = $null
+$script:TMSSettingsTable = $null
+$script:TMSConfiguration = $null
 
-    hidden [void] Initialize() {
+
+#region Classes
+class TMSModuleSettings {
+    TMSModuleSettings() {
+        #region Read only presets
         $this | Add-Member -Force ScriptProperty SpecialRowProperties  { @("Etag","PartitionKey","RowKey","TableTimestamp") }
         $this | Add-Member -Force ScriptProperty CommonParameters { @("Debug","ErrorAction","ErrorVariable","Force","InformationAction","InformationVariable","OutVariable","OutBuffer","PipelineVariable","Verbose","WarningAction","WarningVariable","WhatIf","Confirm","PassThru") }
         $this | Add-Member -Force ScriptProperty ExcludeMetaProperties { 
@@ -15,12 +19,21 @@ class TMSPresets {
         }
 
         $this | Add-Member -Force ScriptProperty RegPath {"HKCU:\Software\TooManySecrets" }
-        $this | Add-Member -Force NoteProperty TMSSettingsTable $null 
         $this | Add-Member -Force ScriptProperty ExcludeSettingProperties { @("SettingsFile") }
      
         $this | Add-Member -Force ScriptProperty DefaultCharSet { "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23465789#%&'()*+,-./[\]^_{}~" }
+        #endregion
+
+        #region Shared variables
+        $this | Add-Member -Force ScriptProperty KeyVault { $script:TMSKeyVault } { $script:TMSKeyVault = $args[0] } 
+        $this | Add-Member -Force ScriptProperty Storage { $script:TMSStorage } { $script:TMSStorage = $args[0] } 
+        $this | Add-Member -Force ScriptProperty Table { $script:TMSTable } { $script:TMSTable = $args[0] } 
+        $this | Add-Member -Force ScriptProperty SettingsTable { $script:TMSSettingsTable } { $script:TMSSettingsTable = $args[0] }  
+        $this | Add-Member -Force ScriptProperty Configs { $script:TMSConfiguration } { $script:TMSConfiguration = $args[0] }  
+        #endregion
 
     }
+
 }
 
 class TMSSecret {
@@ -42,10 +55,15 @@ class TMSSecret {
         $this.Initialize()
     }
 
+    #[string] ToString() {
+    #    $this.Name
+    #}
+
     hidden [void] Initialize() {
+        $this | Add-Member -MemberType ScriptMethod -Name ToString -Value { $this.Name } -Force
         $this | Add-Member -MemberType ScriptProperty -Name Credential `
             -Value { [PSCredential]::New($this.Username,$this.SecretValue) } `
-            -SecondValue { if ($value -is [PSCredential]) { $this.Username = $Value.Username; $this.SecretValue = $Value.Password } }
+            -SecondValue { $Value = $args[0]; if ($value -is [PSCredential]) { $this.Username = $Value.Username; $this.SecretValue = $Value.Password } }
     }
 
     hidden [void] UpdateFromSecret() {

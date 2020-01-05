@@ -5,14 +5,7 @@ if (Test-Path "$PSScriptRoot\$ClassModule") {
     . $script
 }
 
-$GlobalPresets = New-Object TMSPresets
-
-<#
-Set-Variable -Name "DefaultCharSet" -Force `
-    -Value "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23465789#%&'()*+,-./[\]^_{}~" `
-    -Option ReadOnly `
-    -Visibility Private #`
-#>
+$ModuleSettings = New-Object TMSModuleSettings
 
 Function Convert-SecretToPassword() {
     <#
@@ -479,7 +472,7 @@ Function Set-TooManySecretyProperty() {
 }
 
 Function Get-RandomPassword() {
-    param([char[]]$CharSet=$GlobalPresets.DefaultCharSet,
+    param([char[]]$CharSet=$ModuleSettings.DefaultCharSet,
         [int]$MinLength=15,
         [int]$MaxLength=30,
         [switch]$AsPlainText,
