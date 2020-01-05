@@ -12,7 +12,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.4.1204.1752'
+ModuleVersion = '0.4.1237.1014'
 
 # Supported PSEditions
 CompatiblePSEditions = @("Core","Desk")
@@ -127,7 +127,7 @@ PrivateData = @{
         # IconUri = ''
 
         # ReleaseNotes of this module
-        ReleaseNotes = 'Implementing custom class TMSSecret'
+        ReleaseNotes = 'Migrated to global preset class for all modules'
 
         # External dependent modules of this module
         # ExternalModuleDependencies = ''
