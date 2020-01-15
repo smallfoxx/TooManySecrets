@@ -127,7 +127,7 @@ PrivateData = @{
         # IconUri = ''
 
         # ReleaseNotes of this module
-        ReleaseNotes = 'Implemented custom class and cross nested variables. '
+        ReleaseNotes = 'Implemented custom class and cross nested variables. SEE NEW PROPERTIES AND METHODS!'
 
         # External dependent modules of this module
         # ExternalModuleDependencies = ''

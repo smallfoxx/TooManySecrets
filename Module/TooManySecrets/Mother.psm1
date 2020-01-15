@@ -59,7 +59,8 @@ Function Get-TooManyKeyVault() {
     PS> $MyVaut = Get-TooManyKeyVault -Name "MyVault"
     #>
     param([string]$Name,
-        [switch]$Refresh)
+        [switch]$Refresh,
+        [switch]$Force)
 
     if (-not $Refresh -and (($ModuleSettings.KeyVault -and (-not $name -or ($ModuleSettings.KeyVault.Name -eq $name))))) {
         $ModuleSettings.KeyVault
@@ -70,6 +71,7 @@ Function Get-TooManyKeyVault() {
                 $KeyVault = $ModuleSettings.KeyVault
             } elseif (-not $Name -and (Test-TooManySetting -Name "KeyVault")) {
                 $Name = Get-TooManySetting -Name "KeyVault"
+                Write-Debug "Key vault name is [$Name] and should be [$(Get-TooManySetting -Name 'KeyVault')]"
                 $KeyVault = Get-AzKeyVault -VaultName $Name
             }
 
@@ -79,7 +81,7 @@ Function Get-TooManyKeyVault() {
                 Write-Debug "Got new vault [$($KeyVault.VaultName)]..."
             }
 
-            If (-not $ModuleSettings.KeyVault) {
+            If (-not $ModuleSettings.KeyVault -or $Force) {
                 $ModuleSettings.KeyVault = $KeyVault
             }
 

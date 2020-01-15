@@ -307,24 +307,26 @@ Function Test-TooManySecret {
 
     ((Get-TooManySecretList) -contains $name)
 }
-
 Function Set-TooManySecret() {
+    [CmdletBinding(DefaultParameterSetName="Name")]
     [Alias('Set-Secret')]
     param(
         [parameter(ParameterSetName="ByObject",ValueFromPipeline=$true,Mandatory=$true,Position=1)][PSObject]$Secret,
-        [parameter(ParameterSetName="ByName",Mandatory=$true,Position=1)][ValidatePattern("^[0-9a-zA-Z-]+$")][string]$Name,
-        [string]$URL,
-        [string]$Username,
-        [string]$Server,
-        [string]$Domain,
-        [string]$FQDN,
-        [string]$UPN,
-        [SecureString]$SecureValue,
-        [switch]$DisablePrevious,
-        [switch]$PassThru,
-        [switch]$ImportTags,
-        [switch]$Force,
-        [hashtable]$Property=@{}
+        [parameter(ParameterSetName="ByName",Mandatory=$true,ValueFromPipelineByPropertyName=$true,Position=1)][ValidatePattern("^[0-9a-zA-Z-]+$")][string]$Name,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$URL,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$Username,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$Server,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$Domain,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$FQDN,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$UPN,
+        [parameter(ValueFromPipelineByPropertyName=$true)]
+            [Alias('Password')]
+            [SecureString]$SecureValue,
+        [parameter(ValueFromPipelineByPropertyName=$true)][switch]$DisablePrevious,
+        [parameter(ValueFromPipelineByPropertyName=$true)][switch]$PassThru,
+        [parameter(ValueFromPipelineByPropertyName=$true)][switch]$ImportTags,
+        [parameter(ValueFromPipelineByPropertyName=$true)][switch]$Force,
+        [parameter(ValueFromPipelineByPropertyName=$true)][hashtable]$Property=@{}
     )
 Process {
     $SetProperties = @{}
@@ -368,12 +370,29 @@ Process {
 
 }
 
+Function ConvertFrom-TMSToAzure {
+    Param([parameter(ValueFromPipeline=$true,Mandatory=$true)][TMSSecret]$Secret)
+
+    If ($Secret.id -match "\Ahttp(s)?://(?<vaultName>[^\.\/]+)\.vault\.(?<domain>[^:/]+)(:443)?/secrets/(?<name>[^/]+)(/(?<version>[^/]*))?\Z") {
+        Get-AzKeyVaultSecret -VaultName $matches.vaultName -Name $matches.name -Version $matches.version
+    }
+}
+
 Function Update-TooManySecret() {
+    [CmdletBinding(DefaultParameterSetName="AzSecret")]
     [Alias("Update-Secret")]
-    param([parameter(ValueFromPipeline=$true,Mandatory=$true)][Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecret]$Secret)
+    param([parameter(ValueFromPipeline=$true,ParameterSetName='AzSecret',Mandatory=$true)][PSObject]$Secret
+    )
 
 Process {
-    $Secret | Update-AzKeyVaultSecret
+    switch ($Secret.GetType().Name) {
+        'TMSSecret' {
+            $AzSecret = $Secret | ConvertFrom-TMSToAzure 
+            $AzSecret.SecretValue = $Secret.SecretValue
+            $AzSecret | Update-AzKeyVaultSecret  }
+        'PSKeyVaultSecret' { $Secret | Update-AzKeyVaultSecret}
+        default     { }
+    }
 }
 
 }
@@ -388,6 +407,7 @@ Function Update-TooManySecretList {
     )
 Process {
     If (-not $script:TMSSecretList) {
+        Write-Debug "Creating list of secrets"
         $script:TMSSecretList = [PSCustomObject]@{
             Names = @()
             Meta = @()
