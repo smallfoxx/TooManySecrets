@@ -8,7 +8,7 @@ if (Test-Path "$PSScriptRoot\$ClassModule") {
 $ModuleSettings = New-Object TMSModuleSettings
 
 <# TODO:
-    * serch all keyvaults
+    * search all keyvaults
 #>
 
 Function Test-TooManyKeyVault() {
@@ -271,21 +271,19 @@ Connect-TooManySecret
         [switch]$SwitchContext)
 
     $Result = $False
+    $TenantID = Get-TooManySetting -Name "TenantID"
+    $SubID = Get-TooManySetting -Name "SubscriptionID"
     $context = Get-AzContext
-    If ($Context) {
-        $Result = $true
-    } elseif (-not $DoNotConnect) {
-        $TenantID = Get-TooManySetting -Name "TenantID"
-        $SubID = Get-TooManySetting -Name "SubscriptionID"
-        $context = Connect-AzAccount -Tenant $TenantID -Subscription $SubID #-Tenant $DefaultTooManyTenantID -Subscription $DefaultTooManySubID
-    }
 
-    If ($Prompt -or $SwitchContext) {
+    if (-not ($context -or $DoNotConnect)) {
+        $context = Connect-AzAccount -Tenant $TenantID -Subscription $SubID #-Tenant $DefaultTooManyTenantID -Subscription $DefaultTooManySubID
+    } elseIf ($Prompt -or $SwitchContext) {
         Connect-TooManySecret -Force:($SwitchContext -or -not $Prompt)
     }
+
     If ($context) {
-        Set-TooManySetting -Name "TenantID" -Value $Context.Tenant.ToString()
-        Set-TooManySetting -Name "SubscriptionID" -Value $Context.Subscription.ToString()
+        If ($UpdateSettings -or (-not $TenantID)) { Set-TooManySetting -Name "TenantID" -Value $Context.Tenant.ToString() }
+        If ($UpdateSettings -or (-not $SubscriptionID)) { Set-TooManySetting -Name "SubscriptionID" -Value $Context.Subscription.ToString() }
         $Result = $true
     }
 

@@ -262,14 +262,14 @@ Process {
                 $FilteredSecrets = $Secrets | Where-Object { $_.Name -like $Filter }
             }
             ForEach ($Secret in $FilteredSecrets) {
-                $DetailedSecret = $KeyVault | Get-AzKeyVaultSecret -Name $Secret.Name -IncludeVersions:$IncludeVersions
+                $IndividualSecret = $KeyVault | Get-AzKeyVaultSecret -Name $Secret.Name -IncludeVersions:$IncludeVersions
                 If ($ExcludeMetadata) {
-                    $DetailedSecret
+                    New-Object TMSSecret($IndividualSecret)
                 } elseif ($IncludeVersions) {
-                    $DetailedSecret | Add-TooManyMeta -Force
+                    (New-Object TMSSecret($IndividualSecret)) | Add-TooManyMeta -Force
                 } else  {
-                    #Add-TooManyMeta -Secret $DetailedSecret -Force
-                    $DetailedSecret | Add-TooManyMeta -Force
+                    #Add-TooManyMeta -Secret $IndividualSecret -Force
+                    (New-Object TMSSecret($IndividualSecret)) | Add-TooManyMeta -Force
                 }
             }
         } 
