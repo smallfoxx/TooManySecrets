@@ -70,7 +70,10 @@ Function Reset-TooManySettings() {
 }
 Function Import-TooManySetting() {
     param([string]$SettingsFile=(Get-SettingPath),
-        [switch]$UpdateFromTable)
+        [switch]$UpdateFromTable,
+        [switch]$PassThru,
+        [switch]$Force,
+        [switch]$Quiet)
 
     write-Debug "Settings file [$SettingsFile]"
     If (Test-Path $SettingsFile) {
@@ -86,6 +89,25 @@ Function Import-TooManySetting() {
         #Set-Variable -Name "TMSSettings" -Value $Settings -Scope Global -Visibility Private
         $ModuleSettings.Configs = $Settings
         Update-ModuleDetails
+
+        If ($ModuleSettings.Configs.KeyVault -and $ModuleSettings.KeyVault) {
+            If ($ModuleSettings.KeyVault.VaultName -ne $ModuleSettings.Configs.KeyVault) {
+                If ($Force -or $Quiet) {
+                    $Response = "Yes"
+                } else {
+                    $Response = ""
+                }
+                If (-not ($Force -or $Quiet)) {
+                    While ($Response -notmatch "\A(Y(es)?)|(No?)\Z") {
+                        Write-Warning ("Existing key vault [{0}] differs from settings key vault [{1}]." -f $ModuleSettings.KeyVault.VaultName,$ModuleSettings.Configs.KeyVault)
+                        $Response = Read-Host -Prompt ("Load [{0}] as key vault? (y/n)")
+                    }
+                }
+                If ($Response -match "\AY(es)?\Z") {
+                    $null = Select-TooManyKeyVault -Name $ModuleSettings.Configs.KeyVault
+                }
+            }
+        }
         If ($ModuleSettings.Configs.SettingsTableName) {
             If (-not $ModuleSettings.SettingsTable) { Select-TooManySettingsTable }
             If ($ModuleSettings.SettingsTable) {
@@ -95,6 +117,8 @@ Function Import-TooManySetting() {
                 }
             }
         }
+
+
         If ($PassThru) { return $ModuleSettings.Configs }
     }
 }
