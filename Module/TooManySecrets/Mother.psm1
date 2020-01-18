@@ -221,8 +221,8 @@ Set-AzContext
     $Context = Get-AzContext
 
     If ($Context.Tenant.Id -ne $TenantID -or $Context.Subscription.Id -ne $SubID) {
-        $PossibleConext = Get-AzContext -ListAvailable | Where-Object { $_.Tenant.Id -eq $TenantID }
-        If ($PossibleConext) {
+        $PossibleContexts = Get-AzContext -ListAvailable | Where-Object { $_.Tenant.Id -eq $TenantID }
+        If ($PossibleContexts) {
             If (-not $Force) {
                 Do {
                     $Response = Read-Host "Existing subscription [$($Context.Subscription.Id)] does not match previous [$SubID]. Switch context? [Y/n]"
@@ -230,11 +230,11 @@ Set-AzContext
                 } Until ($Response -match "\A(Y(es)?)|(N(o)?)\Z")
             }
             If ($Force -or $Response -match '\A(Y(es)?)\Z') {
-                $ExactContext = $PossibleConext | Where-Object { $_.Subscription.Id -eq $SubID} | Select-Object -First 1
+                $ExactContext = $PossibleContexts | Where-Object { $_.Subscription.Id -eq $SubID} | Select-Object -First 1
                 If ($ExactContext) { 
                     $Context = $ExactContext | Set-AzContext
                 } else {
-                    $PossibleConext | Select-Object -First 1 | Set-AzContext | Out-Null
+                    $PossibleContexts | Select-Object -First 1 | Set-AzContext | Out-Null
                     $Context = Set-AzContext -Subscription $SubID
                 }
             }
