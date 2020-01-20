@@ -33,7 +33,7 @@ Copyright = '© 2019 SmallFoxx. All rights reserved.'
 Description = 'This module is useful for storing and retrieving passwords and secrets in Azure Key Vaults.  This allows for passwords and secrets to be shared among users via Azure AD authentication and policies with the relatively inexpensive Azure Key Vault resource. While communications are always encrypted and stored securely when working with the Azure Key Vault, further security can be utilized to independantly encrypting the passwords before they are transmitted to Azure. This is module and companion nested modules are published under the Apache License 2.0 and available via GitHub @ https://github.com/smallfoxx/TooManySecrets/'
 
 # Minimum version of the Windows PowerShell engine required by this module
-PowerShellVersion = '5.0'
+PowerShellVersion = '5.1'
 
 # Name of the Windows PowerShell host required by this module
 # PowerShellHostName = ''
@@ -144,5 +144,3 @@ HelpInfoURI = 'https://github.com/smallfoxx/TooManySecrets/wiki'
 
 
 }
-
-z
