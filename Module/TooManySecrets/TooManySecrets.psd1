@@ -12,10 +12,10 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.4.2001.1611'
+ModuleVersion = '0.5.0051.1354'
 
 # Supported PSEditions
-# CompatiblePSEditions = @()
+CompatiblePSEditions = @("Core","Desk")
 
 # ID used to uniquely identify this module
 GUID = '426237eb-1a68-4db9-a10c-b8206698c3d3'
@@ -33,7 +33,7 @@ Copyright = '© 2019 SmallFoxx. All rights reserved.'
 Description = 'This module is useful for storing and retrieving passwords and secrets in Azure Key Vaults.  This allows for passwords and secrets to be shared among users via Azure AD authentication and policies with the relatively inexpensive Azure Key Vault resource. While communications are always encrypted and stored securely when working with the Azure Key Vault, further security can be utilized to independantly encrypting the passwords before they are transmitted to Azure. This is module and companion nested modules are published under the Apache License 2.0 and available via GitHub @ https://github.com/smallfoxx/TooManySecrets/'
 
 # Minimum version of the Windows PowerShell engine required by this module
-PowerShellVersion = '4.0'
+PowerShellVersion = '5.0'
 
 # Name of the Windows PowerShell host required by this module
 # PowerShellHostName = ''
@@ -72,10 +72,11 @@ RequiredModules = @(@{ModuleName = 'Az.Accounts'; GUID = '17a2feff-488b-47f9-872
 
 # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
 NestedModules = @(
+                'Bishop.psm1', #custom classes and shared variables
                 'Whistler.psm1', #main module for calls with passwords and secrets
-               'Mother.psm1',  #working with the KeyVault directly
-               'Liz.psm1', #managing the module and its settings
-               'Carl.psm1' #working with the meta data and details
+                'Mother.psm1',  #working with the KeyVault directly
+                'Liz.psm1', #managing the module and its settings
+                'Carl.psm1' #working with the meta data and details
                )
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
@@ -106,7 +107,7 @@ FunctionsToExport = 'Test-TooManyKeyVault','New-TooManyKeyVault','Get-TooManyKey
 # ModuleList = @()
 
 # List of all files packaged with this module
-# FileList = @()
+FileList = @('TooManySecrets.json')
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
 PrivateData = @{
@@ -126,7 +127,7 @@ PrivateData = @{
         # IconUri = ''
 
         # ReleaseNotes of this module
-        ReleaseNotes = 'Fixed errors in installing and deploying resources to Azure'
+        ReleaseNotes = 'Implemented custom class and cross nested variables. SEE NEW PROPERTIES AND METHODS!'
 
         # External dependent modules of this module
         # ExternalModuleDependencies = ''
@@ -136,10 +137,12 @@ PrivateData = @{
  } # End of PrivateData hashtable
 
 # HelpInfo URI of this module
-HelpInfoURI = 'https://github.com/smallfoxx/TooManySecrets'
+HelpInfoURI = 'https://github.com/smallfoxx/TooManySecrets/wiki'
 
 # Default prefix for commands exported from this module. Override the default prefix using Import-Module -Prefix.
 # DefaultCommandPrefix = ''
 
+
 }
 
+z

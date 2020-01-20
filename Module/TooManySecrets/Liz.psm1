@@ -1,14 +1,11 @@
-Set-Variable -Name "RegPath" `
-    -Value "HKCU:\Software\TooManySecrets" `
-    -Option ReadOnly `
-    -Visibility Private 
+$ClassModule = "Bishop.psm1"
+if (Test-Path "$PSScriptRoot\$ClassModule") {
+    #this is to get the class definitions shared between modules
+    $script = [ScriptBlock]::Create("using module '$PSScriptRoot\$ClassModule'")
+    . $script
+}
 
-Set-Variable -Name "TMSSettingsTable" `
-    -Value $null `
-    -Option AllScope
-    
-$ExcludeSettingProperties = @("SettingsFile")
-
+$ModuleSettings = New-Object TMSModuleSettings
 
 Function Get-ModuleName() {
 
@@ -37,8 +34,8 @@ Function Get-SettingPath() {
 
 Function Update-ModuleDetails() {
 
-    If ($TMSSettings) {
-        $Module = Get-Module ($TMSSettings.ModuleName)
+    If ($ModuleSettings.Configs) {
+        $Module = Get-Module ($ModuleSettings.Configs.ModuleName)
         If ($Module) {
             Set-TooManySetting -Name "ModuleVersion" -Value $Module.Version
             If ($Module.Path -like "$HOME*") { 
@@ -55,15 +52,16 @@ Function Reset-TooManySettings() {
     param([switch]$DoNotImport,
         [switch]$Save)
 
-    If ($TMSSettings) {
-        Write-Information "Resetting TooManySecrets settings..."
+    If ($ModuleSettings.Configs) {
+        write-host "Resetting..."
     
         If ($Save) {
             Export-TooManySetting
         }
 
-        Set-Variable -Name "TMSSettings" -Scope Global -Value $TMSSettings -Visibility Public
-        Remove-Variable -Name "TMSSettings" -Scope Global -Force
+        #Set-Variable -Name "TMSSettings" -Scope Global -Value $ModuleSettings.Configs -Visibility Public
+        #Remove-Variable -Name "TMSSettings" -Scope Global -Force
+        $ModuleSettings.Configs = $Null
     }
 
     If (-not $DoNotImport) {
@@ -72,7 +70,10 @@ Function Reset-TooManySettings() {
 }
 Function Import-TooManySetting() {
     param([string]$SettingsFile=(Get-SettingPath),
-        [switch]$UpdateFromTable)
+        [switch]$UpdateFromTable,
+        [switch]$PassThru,
+        [switch]$Force,
+        [switch]$Quiet)
 
     write-Debug "Settings file [$SettingsFile]"
     If (Test-Path $SettingsFile) {
@@ -85,18 +86,40 @@ Function Import-TooManySetting() {
 
     If ($Settings) {
         $Settings | Add-Member NoteProperty SettingsFile $SettingsFile -Force
-        Set-Variable -Name "TMSSettings" -Value $Settings -Scope Global -Visibility Private
+        #Set-Variable -Name "TMSSettings" -Value $Settings -Scope Global -Visibility Private
+        $ModuleSettings.Configs = $Settings
         Update-ModuleDetails
-        If ($TMSSettings.SettingsTableName) {
-            If (-not $TMSSettingsTable) { Select-TooManySettingsTable }
-            If ($TMSSettingsTable) {
-                $SettingsRow = Get-AzTableRow -Table $TMSTable -PartitionKey "Secrets" -RowKey "TMSSettings" | Select-Object * -ExcludeProperty $SpecialRowProperties
+
+        If ($ModuleSettings.Configs.KeyVault -and $ModuleSettings.KeyVault) {
+            If ($ModuleSettings.KeyVault.VaultName -ne $ModuleSettings.Configs.KeyVault) {
+                If ($Force -or $Quiet) {
+                    $Response = "Yes"
+                } else {
+                    $Response = ""
+                }
+                If (-not ($Force -or $Quiet)) {
+                    While ($Response -notmatch "\A(Y(es)?)|(No?)\Z") {
+                        Write-Warning ("Existing key vault [{0}] differs from settings key vault [{1}]." -f $ModuleSettings.KeyVault.VaultName,$ModuleSettings.Configs.KeyVault)
+                        $Response = Read-Host -Prompt ("Load [{0}] as key vault? (y/n)")
+                    }
+                }
+                If ($Response -match "\AY(es)?\Z") {
+                    $null = Select-TooManyKeyVault -Name $ModuleSettings.Configs.KeyVault
+                }
+            }
+        }
+        If ($ModuleSettings.Configs.SettingsTableName) {
+            If (-not $ModuleSettings.SettingsTable) { Select-TooManySettingsTable }
+            If ($ModuleSettings.SettingsTable) {
+                $SettingsRow = Get-AzTableRow -Table $ModuleSettings.Table -PartitionKey "Secrets" -RowKey "TMSSettings" | Select-Object * -ExcludeProperty $ModuleSettings.SpecialRowProperties
                 ForEach ($Column in ($SettingsRow | Get-Member -MemberType *Property)) {
                     Set-TooManySetting -Name $Column.Name -Value $SettingsRow.($ColumnName) -DoNotOverwrite:(-not $UpdateFromTable)
                 }
             }
         }
-        If ($PassThru) { return $TMSSettings }
+
+
+        If ($PassThru) { return $ModuleSettings.Configs }
     }
 }
 
@@ -104,14 +127,14 @@ Function Export-TooManySetting() {
     param([string]$SettingsFile=(Get-SettingPath))
 
     #Write-Debug "Using settings file [$SettingsFile]..."
-    If ($SettingsFile -ne (Get-TooManySetting -Name SettingsFile)) { $TMSSettings.SettingsFile = $SettingsFile }
-    $SettingsToExport = ($TMSSettings | Select-Object * -ExcludeProperty $ExcludeSettingProperties)
+    If ($SettingsFile -ne (Get-TooManySetting -Name SettingsFile)) { $ModuleSettings.Configs.SettingsFile = $SettingsFile }
+    $SettingsToExport = ($ModuleSettings.Configs | Select-Object * -ExcludeProperty $ModuleSettings.ExcludeSettingProperties)
     $SettingsHash = @{}
     ForEach ($SettingProperty in ($SettingsToExport | Get-Member -MemberType *Property )) {
-        $SettingsHash.($SettingProperty.Name) = $TMSSettings.($SettingProperty.Name)
+        $SettingsHash.($SettingProperty.Name) = $ModuleSettings.Configs.($SettingProperty.Name)
     }
-    If ($TMSSettingsTable) {
-        Add-AzTableRow -Table $TMSSettingsTable -PartitionKey "Secrets" -RowKey "TMSSettings" `
+    If ($ModuleSettings.SettingsTable) {
+        Add-AzTableRow -Table $ModuleSettings.SettingsTable -PartitionKey "Secrets" -RowKey "TMSSettings" `
             -UpdateExisting -property $SettingsHash | Out-Null
     }
     $JSONSettings = ConvertTo-Json $SettingsToExport 
@@ -132,9 +155,9 @@ Function Export-TooManySetting() {
 Function Get-TooManySetting() {
     param([string]$Name)
     
-    If (-Not $TMSSettings) { Import-TooManySetting }
-    If ($TMSSettings) {
-        return $TMSSettings.$Name
+    If (-Not $ModuleSettings.Configs) { Import-TooManySetting }
+    If ($ModuleSettings.Configs) {
+        return $ModuleSettings.Configs.$Name
     }
 
 }
@@ -144,11 +167,10 @@ Function Set-TooManySetting() {
         $Value,
         [switch]$DoNotOverwrite )
 
-    If (-Not $TMSSettings) { Import-TooManySetting }
-    If ($TMSSettings) {
-        If (-not ($DoNotOverwrite -and $TMSSettings.$Name)) {
-            $TMSSettings | Add-Member NoteProperty $Name $Value -Force
-            Write-Debug "Wanting [$name] set as [$value] and ended up with [$($TMSSettings.$name)]"
+    If (-Not $ModuleSettings.Configs) { Import-TooManySetting }
+    If ($ModuleSettings.Configs) {
+        If (-not ($DoNotOverwrite -and $ModuleSettings.Configs.$Name)) {
+            $ModuleSettings.Configs | Add-Member NoteProperty $Name $Value -Force
             Export-TooManySetting
         }
     }
@@ -159,17 +181,17 @@ Function Select-TooManySettingsTable() {
         [string]$StorageAccountName=(Get-TooManySetting -Name "StorageAccountName"),
         [string]$StorageAccountRG=(Get-TooManySetting -Name "StorageAccountRG") )
 
-    If ($TMSSettings) {
+    If ($ModuleSettings.Configs) {
         If ($TableName -and $StorageAccountName -and $StorageAccountRG) {
-            If ($TMSStorage.StorageAccountName -eq $StorageAccountName -and $TMSStorage.ResourceGroupName -eq $StorageAccountRG) {
-                $SettingsStorage = $TMSStorage
+            If ($ModuleSettings.Table.StorageAccountName -eq $StorageAccountName -and $ModuleSettings.Table.ResourceGroupName -eq $StorageAccountRG) {
+                $SettingsStorage = $ModuleSettings.Table
             } else {
                 $SettingsStorage = Get-AzStorageAccount -ResourceGroupName $StorageAccountRG `
                     -Name $StorageAccountName
             }
             If ($SettingsStorage) {
-                $TMSSettingsTable = (Get-AzStorageTable -Name $TableName -Context $SettingsStorage.Context -ErrorAction SilentlyContinue).CloudTable
-                If ($TMSSettingsTable) {
+                $ModuleSettings.SettingsTable = (Get-AzStorageTable -Name $TableName -Context $SettingsStorage.Context -ErrorAction SilentlyContinue).CloudTable
+                If ($ModuleSettings.SettingsTable) {
                     Set-TooManySetting -Name "StorageAccountName" -Value $StorageAccountName -DoNotOverwrite
                     Set-TooManySetting -Name "StorageAccountRG" -Value $StorageAccountRG -DoNotOverwrite
                     Set-TooManySetting -Name "SettingsTableName" -Value $TableName
@@ -183,8 +205,8 @@ Function Select-TooManySettingsTable() {
 Function Test-TooManySetting() {
     param([string]$Name)
 
-    If (-Not $TMSSettings) { Import-TooManySetting }
-    return ($null -ne ($TMSSettings | Get-Member $Name))
+    If (-Not $ModuleSettings.Configs) { Import-TooManySetting }
+    return ($null -ne ($ModuleSettings.Configs | Get-Member $Name))
 
 }
 

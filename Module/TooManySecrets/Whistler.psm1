@@ -1,8 +1,12 @@
-Set-Variable -Name "DefaultCharSet" `
-    -Value "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23465789#%&'()*+,-./[\]^_{}~" `
-    -Option ReadOnly `
-    -Visibility Private 
- 
+$ClassModule = "Bishop.psm1"
+if (Test-Path "$PSScriptRoot\$ClassModule") {
+    #this is to get the class definitions shared between modules
+    $script = [ScriptBlock]::Create("using module '$PSScriptRoot\$ClassModule'")
+    . $script
+}
+
+$ModuleSettings = New-Object TMSModuleSettings
+
 Function Convert-SecretToPassword() {
     <#
     .SYNOPSIS
@@ -167,7 +171,7 @@ param([parameter(Mandatory=$true)][ValidatePattern("^[0-9a-zA-Z-]+$")][string]$N
                 $SecureValue = $SecureEncrypted
             }
             $Secret = Set-AzKeyVaultSecret -VaultName $KeyVault.VaultName -SecretValue  $SecureValue -Name $Name -NotBefore (Get-Date)
-            If ($script:TMSSecretList.Names -notcontains $Name) {
+            If ($script:TMSSecretList -and $script:TMSSecretList.Names -notcontains $Name) {
                 $script:TMSSecretList.Names += $Name
             }
             $Secret | Convert-SecretToPassword -AsPlainText:$AsPlainText
@@ -241,7 +245,9 @@ Function Get-TooManySecret() {
         
 Begin {
 
-    If ($RegEx -or $Like) {
+    If ($PSCmdlet.ParameterSetName -eq 'Filtered') {
+        #write-output (Get-AzContext)
+        #Write-output (Get-TooManyKeyVault)
         $Secrets = $KeyVault | Get-AzKeyVaultSecret
     }
 }
@@ -256,14 +262,14 @@ Process {
                 $FilteredSecrets = $Secrets | Where-Object { $_.Name -like $Filter }
             }
             ForEach ($Secret in $FilteredSecrets) {
-                $DetailedSecret = $KeyVault | Get-AzKeyVaultSecret -Name $Secret.Name -IncludeVersions:$IncludeVersions
+                $IndividualSecret = $KeyVault | Get-AzKeyVaultSecret -Name $Secret.Name -IncludeVersions:$IncludeVersions
                 If ($ExcludeMetadata) {
-                    $DetailedSecret
+                    New-Object TMSSecret($IndividualSecret)
                 } elseif ($IncludeVersions) {
-                    $DetailedSecret | Add-TooManyMeta -Force
+                    (New-Object TMSSecret($IndividualSecret)) | Add-TooManyMeta -Force
                 } else  {
-                    #Add-TooManyMeta -Secret $DetailedSecret -Force
-                    $DetailedSecret | Add-TooManyMeta -Force
+                    #Add-TooManyMeta -Secret $IndividualSecret -Force
+                    (New-Object TMSSecret($IndividualSecret)) | Add-TooManyMeta -Force
                 }
             }
         } 
@@ -277,12 +283,12 @@ Process {
             }
 
             If ($ExcludeMetadata) {
-                $Secret 
+                New-Object TMSSecret($Secret)
             } elseif ($Secret) {
                 if ($IncludeVersions) {
-                    $Secret | Add-TooManyMeta -Force 
+                    (New-Object TMSSecret($Secret)) | Add-TooManyMeta -Force
                 } else {
-                    $Secret | Add-TooManyMeta -Force
+                    (New-Object TMSSecret($Secret)) | Add-TooManyMeta -Force
                 }
             }
         }
@@ -301,24 +307,26 @@ Function Test-TooManySecret {
 
     ((Get-TooManySecretList) -contains $name)
 }
-
 Function Set-TooManySecret() {
+    [CmdletBinding(DefaultParameterSetName="Name")]
     [Alias('Set-Secret')]
     param(
         [parameter(ParameterSetName="ByObject",ValueFromPipeline=$true,Mandatory=$true,Position=1)][PSObject]$Secret,
-        [parameter(ParameterSetName="ByName",Mandatory=$true,Position=1)][ValidatePattern("^[0-9a-zA-Z-]+$")][string]$Name,
-        [string]$URL,
-        [string]$Username,
-        [string]$Server,
-        [string]$Domain,
-        [string]$FQDN,
-        [string]$UPN,
-        [SecureString]$SecureValue,
-        [switch]$DisablePrevious,
-        [switch]$PassThru,
-        [switch]$ImportTags,
-        [switch]$Force,
-        [hashtable]$Property=@{}
+        [parameter(ParameterSetName="ByName",Mandatory=$true,ValueFromPipelineByPropertyName=$true,Position=1)][ValidatePattern("^[0-9a-zA-Z-]+$")][string]$Name,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$URL,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$Username,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$Server,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$Domain,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$FQDN,
+        [parameter(ValueFromPipelineByPropertyName=$true)][string]$UPN,
+        [parameter(ValueFromPipelineByPropertyName=$true)]
+            [Alias('Password')]
+            [SecureString]$SecureValue,
+        [parameter(ValueFromPipelineByPropertyName=$true)][switch]$DisablePrevious,
+        [parameter(ValueFromPipelineByPropertyName=$true)][switch]$PassThru,
+        [parameter(ValueFromPipelineByPropertyName=$true)][switch]$ImportTags,
+        [parameter(ValueFromPipelineByPropertyName=$true)][switch]$Force,
+        [parameter(ValueFromPipelineByPropertyName=$true)][hashtable]$Property=@{}
     )
 Process {
     $SetProperties = @{}
@@ -337,6 +345,8 @@ Process {
             $Secret = Get-TooManySecret -Name $Name
         } elseif ($Force) {
             $Secret = New-TooManySecret -Name $name -SecureValue $SecureValue -PassThru
+        } else {
+            Write-Warning "Secret [$Name] does not exists. Use -Force to force creation of a new secret."
         }
 
         If ($Secret) {
@@ -360,12 +370,29 @@ Process {
 
 }
 
+Function ConvertFrom-TMSToAzure {
+    Param([parameter(ValueFromPipeline=$true,Mandatory=$true)][TMSSecret]$Secret)
+
+    If ($Secret.id -match "\Ahttp(s)?://(?<vaultName>[^\.\/]+)\.vault\.(?<domain>[^:/]+)(:443)?/secrets/(?<name>[^/]+)(/(?<version>[^/]*))?\Z") {
+        Get-AzKeyVaultSecret -VaultName $matches.vaultName -Name $matches.name -Version $matches.version
+    }
+}
+
 Function Update-TooManySecret() {
+    [CmdletBinding(DefaultParameterSetName="AzSecret")]
     [Alias("Update-Secret")]
-    param([parameter(ValueFromPipeline=$true,Mandatory=$true)][Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecret]$Secret)
+    param([parameter(ValueFromPipeline=$true,ParameterSetName='AzSecret',Mandatory=$true)][PSObject]$Secret
+    )
 
 Process {
-    $Secret | Update-AzKeyVaultSecret
+    switch ($Secret.GetType().Name) {
+        'TMSSecret' {
+            $AzSecret = $Secret | ConvertFrom-TMSToAzure 
+            $AzSecret.SecretValue = $Secret.SecretValue
+            $AzSecret | Update-AzKeyVaultSecret  }
+        'PSKeyVaultSecret' { $Secret | Update-AzKeyVaultSecret}
+        default     { }
+    }
 }
 
 }
@@ -380,6 +407,7 @@ Function Update-TooManySecretList {
     )
 Process {
     If (-not $script:TMSSecretList) {
+        Write-Debug "Creating list of secrets"
         $script:TMSSecretList = [PSCustomObject]@{
             Names = @()
             Meta = @()
@@ -441,12 +469,8 @@ Function New-TooManySecret() {
         [switch]$PassThru
     )
 Process {
-    try {
-        $ExistingSecret = Get-TooManySecret -Name $Name 
-    } catch {
 
-    }
-    If ($ExistingSecret) {
+    If (Test-TooManySecret -Name $Name) {
         Write-Warning "Secret named [$Name] already exists."
     } else {
         If ($SecureValue) {
@@ -468,7 +492,7 @@ Function Set-TooManySecretyProperty() {
 }
 
 Function Get-RandomPassword() {
-    param([char[]]$CharSet=$DefaultCharSet,
+    param([char[]]$CharSet=$ModuleSettings.DefaultCharSet,
         [int]$MinLength=15,
         [int]$MaxLength=30,
         [switch]$AsPlainText,
@@ -482,8 +506,9 @@ Function Get-RandomPassword() {
     }
 
     If ($AsPlainText) {
-        $Length = Get-Random -Minimum $MinLength -Maximum $MaxLength+1
+        [int]$Length = Get-Random -Minimum $MinLength -Maximum ($MaxLength+1)
         $LastChar = ""
+        Write-Debug "Length [$length]"
         ( 1..$Length | ForEach-Object {
             do { 
                 $ThisChar = Get-Random -InputObject $charSet -Count 1
