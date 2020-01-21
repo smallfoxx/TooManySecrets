@@ -12,7 +12,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.5.0051.1354'
+ModuleVersion = '0.5.0121.0009'
 
 # Supported PSEditions
 CompatiblePSEditions = @("Core","Desk")
@@ -27,7 +27,7 @@ Author = 'SMFX'
 CompanyName = 'SmallFoxx'
 
 # Copyright statement for this module
-Copyright = '© 2019 SmallFoxx. All rights reserved.'
+Copyright = '© 2020 SmallFoxx. All rights reserved.'
 
 # Description of the functionality provided by this module
 Description = 'This module is useful for storing and retrieving passwords and secrets in Azure Key Vaults.  This allows for passwords and secrets to be shared among users via Azure AD authentication and policies with the relatively inexpensive Azure Key Vault resource. While communications are always encrypted and stored securely when working with the Azure Key Vault, further security can be utilized to independantly encrypting the passwords before they are transmitted to Azure. This is module and companion nested modules are published under the Apache License 2.0 and available via GitHub @ https://github.com/smallfoxx/TooManySecrets/'
@@ -87,7 +87,8 @@ FunctionsToExport = 'Test-TooManyKeyVault','New-TooManyKeyVault','Get-TooManyKey
                         'Import-TooManySetting','Export-TooManySetting','Select-TooManySettingsTable',
                         'Reset-TooManySettings','Get-TooManyPassword','Set-TooManyPassword','New-TooManyPassword',
                         'Get-TooManySecret','Set-TooManySecret','New-TooManySecret','Update-TooManySecret',
-                        'Convert-TooManyKey','Get-TooManySecretList','Update-TooManySecretList','Install-TooManySecret'
+                        'Convert-TooManyKey','Get-TooManySecretList','Update-TooManySecretList','Install-TooManySecret',
+                        'ConvertFrom-TMSSecret'
 
 
 

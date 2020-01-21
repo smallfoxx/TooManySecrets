@@ -202,7 +202,8 @@ Function Get-TooManySecret() {
         [parameter(ParameterSetName="Filtered")][switch]$RegEx,
         [parameter(ParameterSetName="Filtered")][switch]$Like=(-not $RegEx),
         [switch]$ExcludeMetadata,
-        [switch]$IncludeVersions
+        [switch]$IncludeVersions,
+        [switch]$ReturnVaultSecret
     )
     DynamicParam {
         $RuntimeParamDic  = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
@@ -263,7 +264,9 @@ Process {
             }
             ForEach ($Secret in $FilteredSecrets) {
                 $IndividualSecret = $KeyVault | Get-AzKeyVaultSecret -Name $Secret.Name -IncludeVersions:$IncludeVersions
-                If ($ExcludeMetadata) {
+                if ($ReturnVaultSecret) {
+                    $IndividualSecret
+                } elseIf ($ExcludeMetadata) {
                     New-Object TMSSecret($IndividualSecret)
                 } elseif ($IncludeVersions) {
                     (New-Object TMSSecret($IndividualSecret)) | Add-TooManyMeta -Force
@@ -282,7 +285,9 @@ Process {
                 $Secret = $KeyVault | Get-AzKeyVaultSecret -Name $Name -Version $Version
             }
 
-            If ($ExcludeMetadata) {
+            If ($ReturnVaultSecret) {
+                $Secret
+            } elseIf ($ExcludeMetadata) {
                 New-Object TMSSecret($Secret)
             } elseif ($Secret) {
                 if ($IncludeVersions) {

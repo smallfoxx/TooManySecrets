@@ -25,7 +25,7 @@ class TMSModuleSettings {
         #endregion
 
         #region Shared variables
-        $this | Add-Member -Force ScriptProperty KeyVault { $script:TMSKeyVault } { $script:TMSKeyVault = $args[0] } 
+        $this | Add-Member -Force ScriptProperty KeyVault { $script:TMSKeyVault } { $script:TMSKeyVault = $args[0] }
         $this | Add-Member -Force ScriptProperty Storage { $script:TMSStorage } { $script:TMSStorage = $args[0] } 
         $this | Add-Member -Force ScriptProperty Table { $script:TMSTable } { $script:TMSTable = $args[0] } 
         $this | Add-Member -Force ScriptProperty SettingsTable { $script:TMSSettingsTable } { $script:TMSSettingsTable = $args[0] }  
@@ -123,68 +123,76 @@ class TMSSecret {
 
 #endregion Classes
 
- 
-<#
-function Verb-Noun {
-<#
-.SYNOPSIS
-Short summary
-.DESCRIPTION
-Detailed description.
-.PARAMETER Param1
-What the parameter is used for
-.PARAMETER Param2
-What the parameter is used for
-.PARAMETER CommonOptionalParam3
-What the parameter is used for
-.EXAMPLE
-PS> Verb-Noun -Param1 'Value' -CommonOptionalParam3 $Something
-Description of what this example does
-.EXAMPLE
-PS> @($Param2Input, ParamTwoInput) | Verb-Noun -CommonOptionalParam3 "Another entry"
-Description of what this example does
-.LINK
-External link #1
-External link #2
-#
-    [CmdletBinding(DefaultParameterSetName="ParamSet1")]
+#region Convert Classes
+Function ConvertFrom-TMSSecret {
+    [CmdletBinding(DefaultParameterSetName="AsCredential")]
     param (
-        [parameter(ValueFromPipeline=$true,Mandatory=$true,ParameterSetName="ParamSet1",Position=1)][type1]$Param1,
-        [parameter(ValueFromPipeline=$true,Mandatory=$true,ParameterSetName="ParamSet2",Position=1)][type2]$Param2,
-        [parameter(Position=2)][type]$CommonOptionalParam3
+        [parameter(Mandatory=$True,ValueFromPipeline=$true)]
+        [TMSSecret]$Secret,
+
+        [parameter(ParameterSetName="AsAzSecret")]
+        [Alias('AsKeyVaultSecret')]
+        [switch]$AsAzSecret,
+
+        [parameter(ParameterSetName="AsCredential")]
+        [Alias('AsPSCredential')]
+        [switch]$AsCredential,
+
+        [parameter(ParameterSetName="AsSecureString")]
+        [switch]$AsSecureString,
+
+        [parameter(ParameterSetName="AsPlainText")]
+        [Alias('PlainText','AsClearText','CallMeCrazy')]
+        [Switch]$AsPlainText,
+
+        [parameter(ParameterSetName="AsPlainText")]
+        [switch]$Force,
+
+        [parameter(ParameterSetName="AsPlainText")]
+        [bool]$Confirm
     )
     
     begin {
-        # Run once before any iteration
+        
     }
     
     process {
-        # Run at least once and for each instance from the pipeline
+        Switch ($PSCmdlet.ParameterSetName) {
+            "AsAzSecret" {
+                return (Get-TooManySecret -Name $Secret.Name -ReturnVaultSecret)
+            }
+            "AsSecureString" {
+                return $Secret.SecretValue
+            }
+            "AsPlainText" {
+                If ($Force) {
+                    If ($Confirm) {
+                        $Response = Read-Host -Prompt "Convert secret [$($Secret.Name)] to clear, plain text and output the result value? (y/N)"
+                        $Proceed = $Response -match "\A(Y)(es)?\Z"
+                    } else {
+                        $Proceed = $True
+                    }
+                    If ($Proceed) {
+                        return ([System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
+                            [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR(
+                                $Secret.SecretValue
+                            )
+                        ))
+                    } else {
+                        Write-Warning "Cannot proceed with revealing secret as plain text."
+                    }
+                } else {
+                    Write-Warning "Cannot automatically expose a secure value as plain text. Must use -Force to force this option."
+                }
+            }
+            default {
+                return $Secret.Credential
+            }
+        }
     }
     
     end {
-        # Run once after all iteration
+        
     }
 }
-
-#region Alias Listings
-$aliases = @{ "Verb-Function1"=@("Alias1","AliasOne") }
-$aliases += @{ "Verb-Function2"=@() }
-$aliases += @{ "Verb-Function3"=@("Alias3","AliasThree") }
- 
-#region Publish Members
-foreach ($func in $aliases.Keys) {
-    If ($aliases[$func].length -gt 0) {
-        foreach ($alias in ($aliases[$func])) {
-            # If (-not (Get-Command alias)) { New-Alias -Name alias -Value func -PassThru }
-            New-Alias -Name $alias -Value $func -PassThru 
-        }
-        Export-ModuleMember -function $func -alias ($aliases[$func]) 
-    } else {
-        Export-ModuleMember -function $func
-    }
-}
-#endregion
-#endregion
-
-#>
+#endregion Convert Classes
