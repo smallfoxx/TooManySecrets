@@ -50,9 +50,29 @@ class TMSSecret {
     }
 
     TMSSecret([Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecret]$Secret) {
-        $this._AzSecret = $Secret
         $this.UpdateFromSecret($Secret)
         $this.Initialize()
+        #New-Object TMSSecret($Secret,$false)
+    }
+
+    TMSSecret([Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecret]$Secret,[bool]$StoreSecret) {
+        If ($StoreSecret) { $this._AzSecret = $Secret }
+        $this.UpdateFromSecret($Secret)
+        $this.Initialize()
+    }
+
+    TMSSecret([Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecretIdentityItem]$SecretID) {
+        $Secret = Get-AzKeyVaultSecret -VaultName $SecretID.VaultName -Name $SecretID.Name
+        $this.UpdateFromSecret($Secret)
+        $this.Initialize()
+        #New-Object TMSSecret($SecretID,$false)
+    }
+
+    TMSSecret([Microsoft.Azure.Commands.KeyVault.Models.PSKeyVaultSecretIdentityItem]$SecretID,[bool]$IncludeVersions) {
+        $Secret = Get-AzKeyVaultSecret -VaultName $SecretID.VaultName -Name $SecretID.Name -IncludeVersions:$IncludeVersions
+        $this.UpdateFromSecret($Secret)
+        $this.Initialize()
+        #New-Object TMSSecret($Secret)
     }
 
     #[string] ToString() {
@@ -69,6 +89,8 @@ class TMSSecret {
     hidden [void] UpdateFromSecret() {
         If ($this._AzSecret) {
             $this.UpdateFromSecret($this._AzSecret)
+        } elseif ($this.VaultName -and $this.Name) {
+            $this.UpdateFromSecret((Get-AzKeyVaultSecret -VaultName $this.VaultName -Name $this.Name))
         }
     }
 

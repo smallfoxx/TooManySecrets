@@ -201,6 +201,7 @@ Function Get-TooManySecret() {
         [parameter(Position=3,ParameterSetName="Named",ValueFromPipelineByPropertyName=$True)][string]$Version,
         [parameter(ParameterSetName="Filtered")][switch]$RegEx,
         [parameter(ParameterSetName="Filtered")][switch]$Like=(-not $RegEx),
+        [switch]$UseKeyVault,
         [switch]$ExcludeMetadata,
         [switch]$IncludeVersions,
         [switch]$ReturnVaultSecret
@@ -245,36 +246,35 @@ Function Get-TooManySecret() {
     }
         
 Begin {
-
     If ($PSCmdlet.ParameterSetName -eq 'Filtered') {
-        #write-output (Get-AzContext)
-        #Write-output (Get-TooManyKeyVault)
-        $Secrets = $KeyVault | Get-AzKeyVaultSecret
+        #$SecretList = Get-TooManySecretList
+        $Secrets = $KeyVault | Get-AzKeyVaultSecret #-IncludeVersions:$IncludeVersions
     }
 }
 
 Process {
     switch ($PSCmdlet.ParameterSetName) {
-
         'Filtered' {
             If ($RegEx) {
-                $FilteredSecrets = $Secrets | Where-Object { $_.Name -match $Filter }
+                $FilteredSecrets = $Secrets | Where-Object { $_.Name -match $Filter } 
             } else {
-                $FilteredSecrets = $Secrets | Where-Object { $_.Name -like $Filter }
+                $FilteredSecrets = $Secrets | Where-Object { $_.Name -like $Filter } 
             }
+            $CurrentSecretCount = 0
             ForEach ($Secret in $FilteredSecrets) {
-                $IndividualSecret = $KeyVault | Get-AzKeyVaultSecret -Name $Secret.Name -IncludeVersions:$IncludeVersions
+                $CurrentSecretCount++
+                $Percentage = [int](100*$CurrentSecretCount/($FilteredSecrets.Count))
+                Write-Progress -Activity "Retriving [$($FilteredSecrets.count)] secrets" -Status "$Percentage% processed" `
+                    -PercentComplete $Percentage -CurrentOperation "Gathering [$($Secret.name)] secret"
                 if ($ReturnVaultSecret) {
-                    $IndividualSecret
+                    $Secret
                 } elseIf ($ExcludeMetadata) {
-                    New-Object TMSSecret($IndividualSecret)
-                } elseif ($IncludeVersions) {
-                    (New-Object TMSSecret($IndividualSecret)) | Add-TooManyMeta -Force
+                    New-Object TMSSecret($Secret,$IncludeVersions)
                 } else  {
-                    #Add-TooManyMeta -Secret $IndividualSecret -Force
-                    (New-Object TMSSecret($IndividualSecret)) | Add-TooManyMeta -Force
+                    (New-Object TMSSecret($Secret,$IncludeVersions)) | Add-TooManyMeta -Force
                 }
             }
+            Write-Progress -Activity "Retriving [$($FilteredSecrets.count)] secrets" -PercentComplete $Percentage -Completed
         } 
         Default {
             $Name = $PSBoundParameters.Name
@@ -424,6 +424,7 @@ Process {
     }
     switch ($PSCmdlet.ParameterSetName) {
         'ViaKeyVault' {
+            Write-Debug "Update list via KeyVault"
             If ($UseVault) {
                 $script:TMSSecretList.Names = $KeyVault | Get-AzKeyVaultSecret | ForEach-Object { $_.Name }
                 $script:TMSSecretList.Meta = @()
@@ -431,6 +432,7 @@ Process {
             }
         }
         Default {
+            Write-Debug "Update list via meta table"
             $script:TMSSecretList.Meta = Get-TooManyMetaList -IncludeMetadata:$IncludeMetadata
             $script:TMSSecretList.Names = $script:TMSSecretList.Meta | ForEach-Object { $_.Name }
             $script:TMSSecretList.LastUpdateTime = (Get-Date)
