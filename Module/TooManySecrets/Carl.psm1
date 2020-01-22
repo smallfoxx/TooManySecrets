@@ -115,7 +115,7 @@ Process {
             Write-Debug "By secret: $($InputObject.GetType())"
             $Metadata = Get-TooManyMeta -Name $InputObject.Name
             If ($Metadata) {
-                Write-Debug ("existing props: [{0}]" -f (($InputObject | Get-member -MemberType *Propert* | %{ $_.name }) -join ",")) 
+                Write-Debug ("existing props: [{0}]" -f (($InputObject | Get-member -MemberType *Propert* | ForEach-Object { $_.name }) -join ",")) 
                 $Properties = $Metadata | Get-Member -MemberType *Propert* | Where-Object { $ModuleSettings.SpecialRowProperties -notcontains $_.name }
                 ForEach ($Property in $Properties) {
                     Write-Debug "Adding member [$($Property.Name)]" #-ForegroundColor Yellow
