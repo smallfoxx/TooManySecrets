@@ -359,6 +359,7 @@ Process {
             $MetaResult = Set-TooManyMeta -Name $Name -Property $SetProperties
         }
     }
+    Write-Debug "Meta update results: $MetaResult"
 
     If ($Secret) {
         If ($SecureValue) {
@@ -366,6 +367,7 @@ Process {
         }
 
         $SecretUpdate = $Secret | Update-TooManySecret
+        Write-Debug "Security Update result: $SecretUpdate"
 
         If ($PassThru) {
             Get-TooManySecret -Name $Name
