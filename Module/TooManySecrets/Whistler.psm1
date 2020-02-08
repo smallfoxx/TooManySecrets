@@ -291,7 +291,7 @@ Process {
                 New-Object TMSSecret($Secret)
             } elseif ($Secret) {
                 if ($IncludeVersions) {
-                    (New-Object TMSSecret($Secret)) | Add-TooManyMeta -Force
+                    $Secret | ForEach-Object { New-Object TMSSecret($_) } | Add-TooManyMeta -Force
                 } else {
                     (New-Object TMSSecret($Secret)) | Add-TooManyMeta -Force
                 }
