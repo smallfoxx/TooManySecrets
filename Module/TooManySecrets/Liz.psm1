@@ -9,10 +9,10 @@ $ModuleSettings = New-Object TMSModuleSettings
 
 Function Get-ModuleName() {
 
-    If ($PSScriptRoot) {
-        return (Split-Path $PSScriptRoot -Leaf)
+    If ($PSScriptRoot -match "\\(?<name>\D\D[^\\]+)(\\(?<version>[\d\.]+))?$") {
+        return $Matches.name
     } else {
-        "TooManySecret"
+        "TooManySecrets"
     }
 }
 Function Get-SettingPath() {
